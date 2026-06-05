@@ -1,0 +1,356 @@
+"""Trainer for the parametric PINN surrogate.
+
+Implements the group's house-style training loop:
+  * decoupled per-field networks (u, v, w, p) + a turbulent-viscosity net (nut),
+  * dual AdamW optimizers (nut at a higher LR) so the closure field gets signal,
+  * gradient-norm adaptive loss weighting (Wang et al., 2021) with EMA + cap,
+    and a manual-weight fallback,
+  * per-(case, phase) accumulation of data + physics + BC losses,
+  * checkpoints carrying the networks, the fitted Normalizer, and ref scales.
+
+Driven by a plain config dict (loaded from a stage YAML by scripts/03_train.py).
+"""
+
+from __future__ import annotations
+
+import csv
+import json
+import time
+from pathlib import Path
+from typing import Dict, List
+
+import numpy as np
+import torch
+import torch.optim as optim
+
+from ..config import MODELS_DIR, PROJECT_ROOT
+from ..data.loaders import Bundle, build_bundle, fit_normalizer, load_holdout_velocity
+from ..data.normalize import Normalizer
+from ..data.registry import load_registry
+from .losses import (data_pressure_loss, data_velocity_loss, inlet_velocity_loss,
+                     noslip_loss, outlet_pressure_loss, relative_l2, wss_loss)
+from .model import count_parameters, create_networks
+from .physics import compute_physics_loss
+
+COMPONENTS = ["velocity", "physics", "pressure", "wss", "noslip", "inlet", "outlet"]
+
+
+class Trainer:
+    def __init__(self, config: Dict):
+        self.cfg = config
+        self.name = config["experiment"]["name"]
+        seed = int(config.get("random_seed", 42))
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
+        self.device = config.get("device", "cuda")
+        if self.device == "cuda" and not torch.cuda.is_available():
+            print("[trainer] CUDA unavailable -> CPU")
+            self.device = "cpu"
+
+        # Output dir is anchored to the project root (never the working dir) so
+        # results always land inside the repo, wherever the script is launched.
+        od = Path(config["output_dir"]) if config.get("output_dir") else MODELS_DIR / self.name
+        self.out_dir = od if od.is_absolute() else PROJECT_ROOT / od
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+
+        self._build_data()
+        self._build_networks()
+        self._build_optimizers()
+
+        self.epoch = 0
+        self.best_loss = float("inf")
+        self.no_improve = 0
+        self.history: List[Dict] = []
+        self.adaptive_weights: Dict[str, float] = {}
+
+    # ------------------------------------------------------------------ data
+    def _build_data(self) -> None:
+        data = self.cfg["data"]
+        phys = self.cfg.get("physics", {})
+        mu = float(phys.get("mu", 0.0035))
+        rho = float(phys.get("rho", 1060.0))
+        records = load_registry()
+        self.records = records
+
+        train_cases = list(data["train_cases"])
+        phases = list(data.get("phases", ["systolic", "diastolic"]))
+        velocity_kinds = tuple(data.get("velocity_kinds", ["XY", "XZ", "3D"]))
+
+        print(f"[trainer] fitting normalizer on cases {train_cases}, phases {phases}")
+        self.normalizer: Normalizer = fit_normalizer(
+            records, train_cases, phases, mu=mu, rho=rho)
+        if phys.get("re_override"):
+            self._Re = float(phys["re_override"])
+        else:
+            self._Re = self.normalizer.Re
+        print(f"[trainer] U_ref={self.normalizer.U_ref:.4f} m/s  L={self.normalizer.L:.4f} m  "
+              f"Re={self._Re:.1f}  wss_std={self.normalizer.wss_std:.4f}")
+
+        ld = self.cfg.get("loaders", {})
+        self.bundle: Bundle = build_bundle(
+            records, train_cases, phases, self.normalizer, device=self.device,
+            max_velocity_points=int(ld.get("max_velocity_points", 40_000)),
+            n_collocation=int(self.cfg.get("physics", {}).get("n_collocation", 8_000)),
+            wall_normals_method=ld.get("wall_normals_method", "auto"),
+            inlet_n_radial=int(ld.get("inlet_n_radial", 6)),
+            inlet_n_angular=int(ld.get("inlet_n_angular", 12)),
+            velocity_kinds=velocity_kinds,
+        )
+        print(f"[trainer] built {len(self.bundle.groups)} (case,phase) groups")
+
+        # Optional held-out velocity slice for validation (Stage A de-risk).
+        self.holdout = None
+        ho = data.get("holdout")
+        if ho:
+            self.holdout = load_holdout_velocity(
+                records, int(ho["case"]), ho["phase"], ho["kind"],
+                self.normalizer, device=self.device)
+            print(f"[trainer] holdout: case {ho['case']} {ho['phase']} {ho['kind']} "
+                  f"({0 if self.holdout is None else self.holdout['x'].shape[0]} pts)")
+
+    # -------------------------------------------------------------- networks
+    def _build_networks(self) -> None:
+        m = self.cfg["model"]
+        nut = m.get("nut", {})
+        self.networks = create_networks(
+            n_param=self.bundle.n_param,
+            hidden_dim=int(m.get("hidden_dim", 128)),
+            num_layers=int(m.get("num_layers", 6)),
+            num_frequencies=int(m.get("num_frequencies", 16)),
+            fourier_scale=float(m.get("fourier_scale", 1.0)),
+            use_fourier=bool(m.get("use_fourier", True)),
+            use_param_encoder=bool(m.get("use_param_encoder", True)),
+            param_encoder_dims=m.get("param_encoder_dims"),
+            coord_encoder_dims=m.get("coord_encoder_dims"),
+            nut_hidden_dim=int(nut.get("hidden_dim", 64)),
+            nut_num_layers=int(nut.get("num_layers", 4)),
+            nu_t_min=float(nut.get("nu_t_min", 1e-3)),
+            initial_nut=float(nut.get("initial_nut", 0.05)),
+            device=self.device,
+        )
+        total = sum(count_parameters(n) for n in self.networks.values())
+        print(f"[trainer] networks: {total:,} params "
+              f"({', '.join(f'{k}:{count_parameters(v):,}' for k, v in self.networks.items())})")
+
+    # ------------------------------------------------------------ optimizers
+    def _build_optimizers(self) -> None:
+        tr = self.cfg["training"]
+        lr = float(tr.get("lr", 1e-4))
+        nut_mult = float(self.cfg["model"].get("nut", {}).get("lr_multiplier", 10.0))
+        flow_params = [p for k, n in self.networks.items() if k != "nut" for p in n.parameters()]
+        self.opt = optim.AdamW(flow_params, lr=lr, betas=(0.9, 0.99), eps=1e-12, weight_decay=1e-4)
+        self.opt_nut = optim.AdamW(self.networks["nut"].parameters(), lr=lr * nut_mult,
+                                   betas=(0.9, 0.99), eps=1e-12, weight_decay=1e-5)
+        epochs = int(tr.get("epochs", 5000))
+        eta_min = float(tr.get("scheduler", {}).get("eta_min", 1e-6))
+        self.sched = optim.lr_scheduler.CosineAnnealingLR(self.opt, T_max=epochs, eta_min=eta_min)
+        self.sched_nut = optim.lr_scheduler.CosineAnnealingLR(self.opt_nut, T_max=epochs, eta_min=eta_min)
+        self.grad_clip = float(tr.get("gradient_clip", 1.0))
+
+    # ----------------------------------------------------------------- losses
+    def _component_losses(self) -> Dict[str, torch.Tensor]:
+        """Accumulate each loss component (mean over groups) as live tensors."""
+        dev = self.device
+        acc = {c: torch.zeros((), device=dev) for c in COMPONENTS}
+        n_vel = n_wall = 0
+        for g in self.bundle.groups:
+            t = g.tensors
+            if "vx" in t:
+                acc["velocity"] = acc["velocity"] + data_velocity_loss(
+                    self.networks, t["vx"], t["vy"], t["vz"], t["v_params"],
+                    t["u_t"], t["v_t"], t["w_t"])
+                pl, _ = compute_physics_loss(
+                    self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
+                acc["physics"] = acc["physics"] + pl
+                n_vel += 1
+            if "wx" in t:
+                acc["pressure"] = acc["pressure"] + data_pressure_loss(
+                    self.networks["p"], t["wx"], t["wy"], t["wz"], t["w_params"], t["p_t"])
+                wl, _ = wss_loss(self.networks, t["wx"], t["wy"], t["wz"], t["w_params"],
+                                 t["wss_t"], t["normals"], self.normalizer.wss_std)
+                acc["wss"] = acc["wss"] + wl
+                acc["noslip"] = acc["noslip"] + noslip_loss(
+                    self.networks, t["wx"], t["wy"], t["wz"], t["w_params"])
+                axial = int(g.meta.get("axial_dim", 0))
+                acc["inlet"] = acc["inlet"] + inlet_velocity_loss(
+                    self.networks, t["inlet_x"], t["inlet_y"], t["inlet_z"], t["inlet_params"],
+                    float(g.meta.get("u_inlet_nd", 0.0)), axial_dim=axial)
+                acc["outlet"] = acc["outlet"] + outlet_pressure_loss(
+                    self.networks["p"], t["outlet_x"], t["outlet_y"], t["outlet_z"], t["outlet_params"])
+                n_wall += 1
+        if n_vel:
+            acc["velocity"] /= n_vel
+            acc["physics"] /= n_vel
+        if n_wall:
+            for c in ("pressure", "wss", "noslip", "inlet", "outlet"):
+                acc[c] /= n_wall
+        return acc
+
+    def _weights(self, comp: Dict[str, torch.Tensor]) -> Dict[str, float]:
+        aw = self.cfg.get("adaptive_weights", {})
+        if not aw.get("enabled", False) or not self.adaptive_weights:
+            w = self.cfg.get("loss_weights", {})
+            return {c: float(w.get(c, 1.0)) for c in COMPONENTS}
+        return dict(self.adaptive_weights)
+
+    def _update_adaptive_weights(self, comp: Dict[str, torch.Tensor]) -> None:
+        aw = self.cfg["adaptive_weights"]
+        ref = aw.get("ref", "velocity")
+        alpha = float(aw.get("alpha", 0.9))
+        cap = float(aw.get("weight_cap", 20.0))
+        floor = float(aw.get("physics_floor", 0.0))
+        params = [p for n in self.networks.values() for p in n.parameters() if p.requires_grad]
+
+        grad_norms = {}
+        for c, loss in comp.items():
+            if not loss.requires_grad or float(loss) == 0.0:
+                continue
+            grads = torch.autograd.grad(loss, params, retain_graph=True, allow_unused=True)
+            vals = [g.abs().mean().item() for g in grads if g is not None]
+            grad_norms[c] = float(np.mean(vals)) if vals else 0.0
+        if ref not in grad_norms:
+            return
+        ref_norm = grad_norms[ref]
+        for c, gn in grad_norms.items():
+            raw = ref_norm / max(gn, 1e-12)
+            self.adaptive_weights[c] = (
+                (1 - alpha) * self.adaptive_weights.get(c, raw) + alpha * raw)
+        for c in COMPONENTS:
+            self.adaptive_weights.setdefault(c, 1.0)
+            self.adaptive_weights[c] = min(self.adaptive_weights[c], cap)
+        if floor > 0:
+            self.adaptive_weights["physics"] = max(self.adaptive_weights["physics"], floor)
+
+    # --------------------------------------------------------------- training
+    def _physics_only(self) -> torch.Tensor:
+        dev = self.device
+        loss = torch.zeros((), device=dev)
+        n = 0
+        for g in self.bundle.groups:
+            t = g.tensors
+            if "cx" in t:
+                pl, _ = compute_physics_loss(
+                    self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
+                loss = loss + pl
+                n += 1
+        return loss / max(n, 1)
+
+    def train_step(self) -> Dict[str, float]:
+        aw = self.cfg.get("adaptive_weights", {})
+        if (aw.get("enabled", False) and self.epoch > 0
+                and self.epoch % int(aw.get("update_interval", 100)) == 0):
+            comp = self._component_losses()
+            self._update_adaptive_weights(comp)
+
+        self.opt.zero_grad(set_to_none=True)
+        comp = self._component_losses()
+        weights = self._weights(comp)
+        total = sum(weights[c] * comp[c] for c in COMPONENTS)
+        total.backward()
+        if self.grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(
+                [p for k, n in self.networks.items() if k != "nut" for p in n.parameters()],
+                self.grad_clip)
+        self.opt.step()
+
+        # dedicated nut update on physics only
+        self.opt_nut.zero_grad(set_to_none=True)
+        ploss = self._physics_only()
+        ploss.backward()
+        if self.grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(self.networks["nut"].parameters(), self.grad_clip)
+        self.opt_nut.step()
+
+        return {"total": float(total), **{c: float(comp[c]) for c in COMPONENTS}}
+
+    @torch.no_grad()
+    def _velocity_rel_l2(self, data: Dict[str, torch.Tensor]) -> float:
+        net_in = torch.cat([data["x"], data["y"], data["z"], data["params"]], dim=1)
+        pred = torch.cat([self.networks["u"](net_in), self.networks["v"](net_in),
+                          self.networks["w"](net_in)], dim=1)
+        true = torch.cat([data["u_t"], data["v_t"], data["w_t"]], dim=1)
+        return relative_l2(pred, true)
+
+    def train(self) -> None:
+        tr = self.cfg["training"]
+        epochs = int(tr.get("epochs", 5000))
+        eval_interval = int(tr.get("eval_interval", 500))
+        save_interval = int(tr.get("save_interval", 1000))
+        es = tr.get("early_stopping", {})
+        patience = int(es.get("patience", 1000))
+        min_delta = float(es.get("min_delta", 1e-6))
+        es_enabled = bool(es.get("enabled", True))
+
+        print(f"[trainer] training {self.name} for {epochs} epochs on {self.device}")
+        t0 = time.time()
+        for epoch in range(1, epochs + 1):
+            self.epoch = epoch
+            losses = self.train_step()
+            self.sched.step()
+            self.sched_nut.step()
+
+            # Stable model-selection monitor. The adaptive-weighted ``total`` is
+            # non-stationary (its scale jumps when the loss weights update), so
+            # it must NOT drive best-model/early-stop. Use the held-out velocity
+            # rel-L2 when a holdout is configured (Stage A), else the unweighted
+            # sum of raw component losses (stationary across weight updates).
+            holdout_metric = self._velocity_rel_l2(self.holdout) if self.holdout is not None else None
+            monitor = (holdout_metric if holdout_metric is not None
+                       else sum(losses[c] for c in COMPONENTS))
+
+            row = {"epoch": epoch, "lr": self.opt.param_groups[0]["lr"], "monitor": monitor, **losses}
+            self.history.append(row)
+
+            if epoch % eval_interval == 0 or epoch == 1:
+                msg = (f"  ep {epoch:>6} total={losses['total']:.4e} "
+                       f"vel={losses['velocity']:.3e} phys={losses['physics']:.3e} "
+                       f"wss={losses['wss']:.3e} p={losses['pressure']:.3e} monitor={monitor:.4f}")
+                if holdout_metric is not None:
+                    msg += f"  holdout_relL2={holdout_metric:.4f}"
+                print(msg)
+
+            improved = monitor < self.best_loss - min_delta
+            if improved:
+                self.best_loss = monitor
+                self.no_improve = 0
+                self.save_checkpoint("best_model.pt")
+            else:
+                self.no_improve += 1
+
+            if epoch % save_interval == 0:
+                self._save_history()
+            if es_enabled and self.no_improve >= patience:
+                print(f"[trainer] early stop at epoch {epoch} (monitor={monitor:.4f})")
+                break
+
+        self._save_history()
+        self.save_checkpoint("final_model.pt")
+        mname = "holdout rel-L2" if self.holdout is not None else "unweighted loss sum"
+        print(f"[trainer] done in {(time.time()-t0)/60:.1f} min. best {mname}={self.best_loss:.4f}")
+        if self.holdout is not None:
+            print(f"[trainer] final holdout velocity rel-L2 = {self._velocity_rel_l2(self.holdout):.4f}")
+
+    # ------------------------------------------------------------- checkpoint
+    def save_checkpoint(self, filename: str) -> None:
+        torch.save({
+            "epoch": self.epoch,
+            "config": self.cfg,
+            "n_param": self.bundle.n_param,
+            "networks": {k: n.state_dict() for k, n in self.networks.items()},
+            "normalizer": self.normalizer.to_dict(),
+            "Re": self._Re,
+            "best_loss": self.best_loss,
+            "adaptive_weights": self.adaptive_weights,
+        }, self.out_dir / filename)
+
+    def _save_history(self) -> None:
+        if not self.history:
+            return
+        keys = list(self.history[0].keys())
+        with open(self.out_dir / "loss_history.csv", "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            w.writeheader()
+            w.writerows(self.history)
+        with open(self.out_dir / "normalizer.json", "w", encoding="utf-8") as f:
+            json.dump(self.normalizer.to_dict(), f, indent=2)

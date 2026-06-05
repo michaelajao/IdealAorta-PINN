@@ -1,0 +1,37 @@
+# Canonical metadata for the 12 idealized aortic cases.
+#
+# The registry (idealaorta_pinn.dataio.registry) DISCOVERS cases by globbing
+# `data/raw/Case *` and parsing folder names with regex, so it is robust to the
+# inconsistent on-disk naming (e.g. "Disaesed", "C5," prefixes, phase typos).
+# This file provides the authoritative ground truth used to (a) supply beta for
+# each symmetry class and (b) cross-check the auto-parsed (diameter, health).
+#
+# symmetry -> beta map (beta = r/R):
+beta_by_symmetry:
+  axisymmetric: 1.0
+  anterior: 2.08     # "Upper" dilation (beta > 1)
+  posterior: 0.48    # "Lower" dilation (beta < 1)
+  healthy: null
+
+# Per-case expected attributes. `match` is a lowercase substring used to sanity
+# check that the discovered folder maps to this case_id.
+cases:
+  - {case_id: 1,  inlet_diameter_cm: 2.0, health: diseased, symmetry: axisymmetric, match: "case 1"}
+  - {case_id: 2,  inlet_diameter_cm: 2.0, health: diseased, symmetry: anterior,     match: "case 2"}
+  - {case_id: 3,  inlet_diameter_cm: 2.0, health: diseased, symmetry: posterior,    match: "case 3"}
+  - {case_id: 4,  inlet_diameter_cm: 2.3, health: diseased, symmetry: axisymmetric, match: "case 4"}
+  - {case_id: 5,  inlet_diameter_cm: 2.3, health: diseased, symmetry: anterior,     match: "case 5"}
+  - {case_id: 6,  inlet_diameter_cm: 2.3, health: diseased, symmetry: posterior,    match: "case 6"}
+  - {case_id: 7,  inlet_diameter_cm: 2.6, health: diseased, symmetry: axisymmetric, match: "case 7"}
+  - {case_id: 8,  inlet_diameter_cm: 2.6, health: diseased, symmetry: anterior,     match: "case 8"}
+  - {case_id: 9,  inlet_diameter_cm: 2.6, health: diseased, symmetry: posterior,    match: "case 9"}
+  - {case_id: 10, inlet_diameter_cm: 2.0, health: healthy,  symmetry: healthy,      match: "case 10"}
+  - {case_id: 11, inlet_diameter_cm: 2.3, health: healthy,  symmetry: healthy,      match: "case 11"}
+  - {case_id: 12, inlet_diameter_cm: 2.6, health: healthy,  symmetry: healthy,      match: "case 12"}
+
+# Subset definitions referenced by experiment configs.
+subsets:
+  pilot_axisymmetric: [1, 4, 7, 10, 11, 12]   # representative-first
+  diseased_all: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+  healthy_all: [10, 11, 12]
+  all: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]

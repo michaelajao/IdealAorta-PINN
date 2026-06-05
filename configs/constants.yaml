@@ -1,0 +1,36 @@
+# Physical constants and study-wide parameters.
+# Sources: the manuscript "Hemodynamic and Morphometric Analysis of Aortic Models
+# under Aneurysmal and Non-Aneurysmal Conditions" and the group's prior CFD setup.
+
+fluid:
+  rho: 1060.0          # blood density (kg/m^3)
+  mu: 0.0035           # dynamic viscosity (Pa.s), Newtonian assumption
+  # Optional Carreau-Yasuda non-Newtonian rheology (disabled by default for the
+  # idealized study, which used a Newtonian model). Mirrors the TAA project.
+  non_newtonian:
+    enabled: false
+    mu_0: 0.16
+    mu_inf: 0.0035
+    lambda: 8.2
+    n: 0.2128
+    a: 0.64
+
+waveform:
+  Q_max: 2.39e-4       # peak inlet flow rate (m^3/s)
+  Q_base_fraction: 0.05  # baseline flow = 0.05 * Q_max
+  T: 0.8               # cardiac period (s)
+  systolic_pulse_width: 0.35   # (s) sin-pulse half-width in the inlet waveform
+  # Snapshot times present in the data (per-case systolic time varies ~1.775-1.815 s)
+  diastolic_time_s: 2.4
+
+pressure:
+  P_min_mmHg: 80.0
+  P_max_mmHg: 120.0
+  P_outlet_default_mmHg: 100.0   # outlet static pressure used as the gauge reference
+  mmHg_to_Pa: 133.322
+
+geometry:
+  aneurysm_diameter_cm: 4.0      # fixed saccular max diameter for all diseased cases
+  inlet_diameters_cm: [2.0, 2.3, 2.6]
+  healthy_outlet_fraction: 0.8   # outlet = 80% of inlet for healthy cases
+  axial_axis: x                  # vessel axis runs along +X in the exported data

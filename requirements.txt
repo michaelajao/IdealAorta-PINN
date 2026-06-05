@@ -1,0 +1,26 @@
+# Runtime dependencies for IdealAorta-PINN.
+#
+# torch (CUDA build), pyvista, vtk and open3d are provided by the `dl_env`
+# conda environment and are deliberately left unpinned here to avoid clobbering
+# the existing CUDA install. Install the rest with:
+#     pip install -r requirements.txt
+#
+numpy
+pandas
+scipy
+scikit-learn
+pyyaml
+pyarrow
+plotly>=5
+matplotlib
+tqdm
+
+# --- environment-provided (do not reinstall; listed for reference) ---
+# torch==2.7.0+cu128
+# pyvista>=0.46
+# vtk>=9.5
+# open3d            # optional, for higher-quality wall-normal estimation
+
+# --- dev ---
+# pytest
+# ruff
