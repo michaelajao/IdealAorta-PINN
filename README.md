@@ -74,6 +74,44 @@ $py = "C:\Users\ajaoo\miniconda3\envs\idealaorta-pinn\python.exe"
 & $py scripts/run.py --config configs/stageA_case1.yaml --skip-train    # re-validate/plot an existing model
 ```
 
+## Running on an HPC (e.g. brosnan, 48 GB GPU)
+
+The heavy runs (Stage C over all 12 cases, longer training, bigger networks) are best on a large GPU.
+The project is portable — no scheduler script needed; SSH in (VS Code Remote‑SSH works well) and run
+interactively, using `tmux` so long runs survive disconnects.
+
+```bash
+# --- on your laptop: publish the repo (once) ---
+#   GitHub Desktop -> Publish, or:  git init && git add -A && git commit -m "init" && git push
+
+# --- on brosnan (bash) ---
+git clone <your-repo-url> IdealAorta-PINN
+cd IdealAorta-PINN
+
+# 1) environment (login node has internet)
+conda env create -f environment.yml          # creates env "idealaorta-pinn"
+conda activate idealaorta-pinn
+# IMPORTANT: install torch matching brosnan's CUDA (check `nvidia-smi`), e.g. CUDA 12.1:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+pip install -e .
+
+# 2) data: copy the migrated data from the laptop (run from the LAPTOP)
+#   scp -r "C:/Users/ajaoo/Documents/GitHub/IdealAorta-PINN/data/raw"  user@brosnan:~/IdealAorta-PINN/data/
+#   (or scp the original CFD export folder and run: python scripts/prepare.py migrate --source <path> --apply)
+python scripts/prepare.py registry
+python scripts/prepare.py cache               # all 12 cases
+
+# 3) train (use tmux for long runs); 48 GB lets you use the scaled config
+tmux new -s ideal
+python scripts/run.py --config configs/stageC_hpc.yaml        # full study, 48 GB-scaled
+#   detach with Ctrl-b then d;  reattach with: tmux attach -t ideal
+```
+
+Outputs land in `models/`, `report/{figures,metrics,interactive}`, and `paper/figures/` exactly as
+locally. Use `--device cuda` (default) and, if you hit memory limits, lower `loaders.max_velocity_points`
+or `physics.n_collocation` in the config.
+
 ## Method (summary)
 
 - **Inputs:** Fourier-encoded `(x, y, z)` ⊕ a small parameter encoder over `[d_inlet*, β, disease, phase]`

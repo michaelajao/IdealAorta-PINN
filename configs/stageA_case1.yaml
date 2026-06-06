@@ -1,10 +1,13 @@
-# Stage A — single-case reconstruction de-risk (Case 1, 2.0 cm axisymmetric diseased).
-# Train on XY-plane + 3D velocity (+ wall pressure/WSS); HOLD OUT the XZ plane to
-# measure generalization (target velocity rel-L2 < ~0.10).
+# Stage A — single-case IN-SAMPLE reconstruction de-risk (Case 1, 2.0 cm axisym. diseased).
+# Train on ALL of Case 1's data (XY + XZ + 3D velocity, + wall pressure/WSS) and verify
+# the field reconstructs well and the physics residual falls. No orthogonal plane is held
+# out (that was under-determined and triggered premature early stopping). With no holdout,
+# model selection / early stopping use the stationary unweighted component-loss sum.
+# Train to convergence (PINNs need many iterations) — best run on a large GPU (brosnan).
 
 experiment:
   name: stageA_case1
-  description: "Single-case reconstruction (Case 1); XZ plane held out for validation."
+  description: "Single-case in-sample reconstruction (Case 1, all planes); train to convergence."
 
 random_seed: 42
 device: cuda
@@ -13,13 +16,12 @@ output_dir: models/stageA_case1
 data:
   train_cases: [1]
   phases: [systolic, diastolic]
-  velocity_kinds: [XY, "3D"]        # XZ held out
-  holdout: {case: 1, phase: systolic, kind: XZ}
+  velocity_kinds: [XY, XZ, "3D"]     # in-sample: use all velocity sources
 
 model:
   hidden_dim: 128
   num_layers: 5
-  num_frequencies: 16
+  num_frequencies: 24                # more frequencies for sharp near-wall structure
   fourier_scale: 1.0
   use_fourier: true
   use_param_encoder: true
@@ -35,7 +37,7 @@ model:
 physics:
   mu: 0.0035
   rho: 1060.0
-  n_collocation: 2500
+  n_collocation: 6000
 
 loss_weights:        # manual fallback (used until adaptive weights kick in)
   velocity: 1.0
@@ -55,17 +57,17 @@ adaptive_weights:
   physics_floor: 0.01
 
 training:
-  epochs: 1500
+  epochs: 12000                      # train to convergence; early stopping will cut it
   lr: 1.0e-4
   scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
   gradient_clip: 1.0
-  eval_interval: 100
-  save_interval: 500
-  # early stopping is on the stable monitor (held-out XZ rel-L2 for Stage A)
-  early_stopping: {enabled: true, patience: 600, min_delta: 1.0e-5}
+  eval_interval: 250
+  save_interval: 1000
+  # early stopping on the stable in-sample monitor (unweighted component-loss sum)
+  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
 
 loaders:
-  max_velocity_points: 20000
+  max_velocity_points: 40000
   wall_normals_method: auto
   inlet_n_radial: 6
   inlet_n_angular: 12

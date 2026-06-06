@@ -33,8 +33,18 @@ def _plane_axes(coords: np.ndarray):
 
 def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
                      phase: str, kind: str = "XY", max_points: int = 40_000,
-                     out_dir: Path = FIGURES_DIR) -> Path:
-    """CFD | PINN | |error| speed maps on a CFD plane; saved as PNG."""
+                     out_dir: Path = FIGURES_DIR, shared_scale: bool = False) -> Path:
+    """CFD | PINN | |error| speed maps on a CFD plane; saved as PNG.
+
+    Color scaling (default, ``shared_scale=False``): each panel uses its own
+    robust (99th-pct) range, so every field is legible regardless of model
+    quality. With ``shared_scale=True`` the CFD and PINN panels share a
+    *CFD-driven* ceiling so their colors are directly comparable; the ground
+    truth — never the PINN — sets the scale, so the CFD is never hidden (a PINN
+    that over-predicts simply saturates at the top of the bar). Either way each
+    panel title shows the field's true ``[min, max]`` so magnitude mismatches
+    are explicit even when a panel saturates.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -55,16 +65,26 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
 
     a, b = _plane_axes(coords)
     ca, cb = coords[:, a], coords[:, b]
-    vmax = float(np.percentile(np.concatenate([cfd_speed, pinn_speed]), 99))
+
+    def _vmax(v: np.ndarray) -> float:
+        return float(np.percentile(v, 99)) or 1e-9
+
+    def _rng(v: np.ndarray) -> str:
+        return f"[{float(np.min(v)):.3g}, {float(np.max(v)):.3g}] m/s"
+
+    # CFD ground truth sets the ceiling; PINN either shares it (comparable) or
+    # uses its own (always legible). The CFD is never scaled by the PINN.
+    cfd_vmax = _vmax(cfd_speed)
+    pinn_vmax = cfd_vmax if shared_scale else _vmax(pinn_speed)
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
     for ax, vals, title, cmap, vm in (
-        (axes[0], cfd_speed, "CFD", "turbo", vmax),
-        (axes[1], pinn_speed, "PINN", "turbo", vmax),
-        (axes[2], err, "|error|", "magma", float(np.percentile(err, 99) + 1e-9)),
+        (axes[0], cfd_speed, "CFD", "turbo", cfd_vmax),
+        (axes[1], pinn_speed, "PINN", "turbo", pinn_vmax),
+        (axes[2], err, "|error|", "magma", _vmax(err)),
     ):
         sc = ax.scatter(ca, cb, c=vals, s=3, cmap=cmap, vmin=0, vmax=vm)
-        ax.set_title(title)
+        ax.set_title(f"{title}  {_rng(vals)}", fontsize=10)
         ax.set_xlabel("xyz"[a] + " (m)")
         ax.set_ylabel("xyz"[b] + " (m)")
         ax.set_aspect("equal")

@@ -49,10 +49,18 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
     pred = predict_physical(model, coords, rec.inlet_diameter_cm, rec.disease_flag, phase, beta=beta)
     pred_v = np.column_stack([pred["u"], pred["v"], pred["w"]])
     true_speed = np.linalg.norm(true, axis=1)
+    # RMSE normalized by the global reference velocity U_ref. Unlike rel-L2 (which
+    # divides by the field's own norm), this stays interpretable for near-stagnant
+    # phases such as diastole, where ||true|| -> 0 makes rel-L2 blow up.
+    u_ref = model.normalizer.U_ref
+    vel_nrmse_uref = float(np.sqrt(np.mean((pred_v - true) ** 2)) / u_ref)
+    speed_nrmse_uref = float(np.sqrt(np.mean((pred["speed"] - true_speed) ** 2)) / u_ref)
     return {
         "case": case_id, "phase": phase, "kind": kind, "n_points": int(len(df)),
         "vel_rel_l2": _rel_l2(pred_v, true),
         "speed_rel_l2": _rel_l2(pred["speed"], true_speed),
+        "vel_nrmse_uref": vel_nrmse_uref,
+        "speed_nrmse_uref": speed_nrmse_uref,
         "recirc_cfd": recirculation_fraction(true),
         "recirc_pinn": recirculation_fraction(pred_v),
     }

@@ -85,6 +85,7 @@ def main() -> None:
     print(f"\n=== {name}: velocity vs CFD ({args.val_kind}) ===")
     for r in vel_rows:
         print(f"  case {r['case']} {r['phase']:<9} rel-L2={r['vel_rel_l2']:.4f}  "
+              f"nrmse/Uref={r['vel_nrmse_uref']:.4f}  "
               f"recirc CFD/PINN={r['recirc_cfd']:.3f}/{r['recirc_pinn']:.3f}")
     for r in wss_rows:
         print(f"  case {r['case']} {r['phase']:<9} WSS rel-L2={r['wss_rel_l2']:.4f}  "
