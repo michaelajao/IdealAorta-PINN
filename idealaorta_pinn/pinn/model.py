@@ -7,7 +7,7 @@ blocks.
 
 Parameter conditioning follows P2INN (Cho et al., 2024) and IP-PINN
 (Kalajahi-Arzani, 2025): rather than treating the conditioning parameters
-``mu = [d_inlet*, disease_flag, phase]`` "merely as a coordinate", they are
+``mu = [d_inlet*, beta, disease_flag, phase]`` "merely as a coordinate", they are
 passed through a small dedicated *parameter encoder* and concatenated with the
 Fourier-encoded coordinates before the manifold network::
 
@@ -81,7 +81,7 @@ class FieldNet(nn.Module):
 
     def __init__(self,
                  n_spatial: int = 3,
-                 n_param: int = 3,
+                 n_param: int = 4,
                  hidden_dim: int = 128,
                  num_layers: int = 6,
                  num_frequencies: int = 16,
@@ -171,7 +171,7 @@ class NutNet(FieldNet):
         return torch.nn.functional.softplus(raw + self.SOFTPLUS_SHIFT) + self.nu_t_min
 
 
-def create_networks(n_param: int = 3,
+def create_networks(n_param: int = 4,
                     hidden_dim: int = 128,
                     num_layers: int = 6,
                     num_frequencies: int = 16,
