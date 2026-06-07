@@ -1,0 +1,24 @@
+[
+  {
+    "case": 1,
+    "phase": "diastolic",
+    "n_points": 13974,
+    "wss_rel_l2": 15.423254872031341,
+    "wss_mean_cfd": 0.29935175274575926,
+    "wss_mean_pinn": 4.9925761222839355,
+    "wss_peak_cfd": 1.06706488,
+    "wss_peak_pinn": 14.428227424621582,
+    "diameter_cm": 2.0
+  },
+  {
+    "case": 1,
+    "phase": "systolic",
+    "n_points": 14041,
+    "wss_rel_l2": 0.8836749340758863,
+    "wss_mean_cfd": 4.157479597238851,
+    "wss_mean_pinn": 5.088334560394287,
+    "wss_peak_cfd": 24.8819046,
+    "wss_peak_pinn": 14.984930992126465,
+    "diameter_cm": 2.0
+  }
+]

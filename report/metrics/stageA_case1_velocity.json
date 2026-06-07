@@ -1,0 +1,28 @@
+[
+  {
+    "case": 1,
+    "phase": "diastolic",
+    "kind": "XZ",
+    "n_points": 60000,
+    "vel_rel_l2": 111.14504792965519,
+    "speed_rel_l2": 110.24490604068873,
+    "vel_nrmse_uref": 1.7070749075115614,
+    "speed_nrmse_uref": 2.9327944124297685,
+    "recirc_cfd": 0.0448,
+    "recirc_pinn": 0.13951666666666668,
+    "diameter_cm": 2.0
+  },
+  {
+    "case": 1,
+    "phase": "systolic",
+    "kind": "XZ",
+    "n_points": 60000,
+    "vel_rel_l2": 8.279142840213389,
+    "speed_rel_l2": 7.425803780930758,
+    "vel_nrmse_uref": 2.643011238333991,
+    "speed_nrmse_uref": 4.105988520838623,
+    "recirc_cfd": 0.0483,
+    "recirc_pinn": 0.2786166666666667,
+    "diameter_cm": 2.0
+  }
+]

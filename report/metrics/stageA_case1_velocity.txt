@@ -1,0 +1,5 @@
+stageA_case1: velocity error (XZ)
+=================================
+
+  case 1 diastolic | kind=XZ  n_points=60000  vel_rel_l2=111.1450  speed_rel_l2=110.2449  vel_nrmse_uref=1.7071  speed_nrmse_uref=2.9328  recirc_cfd=0.0448  recirc_pinn=0.1395  diameter_cm=2.0000
+   case 1 systolic | kind=XZ  n_points=60000  vel_rel_l2=8.2791  speed_rel_l2=7.4258  vel_nrmse_uref=2.6430  speed_nrmse_uref=4.1060  recirc_cfd=0.0483  recirc_pinn=0.2786  diameter_cm=2.0000
