@@ -1,5 +1,0 @@
-stageA_case1: WSS error
-=======================
-
-  case 1 diastolic | n_points=13974  wss_rel_l2=15.4233  wss_mean_cfd=0.2994  wss_mean_pinn=4.9926  wss_peak_cfd=1.0671  wss_peak_pinn=14.4282  diameter_cm=2.0000
-   case 1 systolic | n_points=14041  wss_rel_l2=0.8837  wss_mean_cfd=4.1575  wss_mean_pinn=5.0883  wss_peak_cfd=24.8819  wss_peak_pinn=14.9849  diameter_cm=2.0000
