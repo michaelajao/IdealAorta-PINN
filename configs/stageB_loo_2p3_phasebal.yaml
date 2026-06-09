@@ -1,18 +1,25 @@
-# Stage B — parametric leave-one-diameter-out (the headline generalization test).
-# Train the surrogate on the 2.0 cm (Case 1) and 2.6 cm (Case 7) axisymmetric
-# diseased geometries; PREDICT the unseen 2.3 cm case (Case 4) and compare to CFD.
-# The Normalizer is fit on the training cases only (no leakage), and the parameter
-# encoder lets one network interpolate across inlet diameter (P2INN-style).
+# Stage B (phase-balanced) — same leave-2.3cm-out experiment as stageB_loo_2p3,
+# but with a per-group RELATIVE velocity loss (loss_balance.relative_velocity).
+# Under the single systolic-scale U_ref the absolute-MSE velocity loss all but
+# ignores the near-stagnant diastolic phase, so the baseline PINN over-predicts
+# diastole. The relative form divides each (case,phase) group's velocity error
+# by that group's own target magnitude, so systole and diastole contribute
+# equally. Compare against models/stageB_loo_2p3 (baseline) on held-out Case 4.
 #
-# Validate with:   python scripts/04_validate.py --config configs/stageB_loo_2p3.yaml --cases 4
+# Run with:  CUDA_VISIBLE_DEVICES=1 python scripts/run.py \
+#              --config configs/stageB_loo_2p3_phasebal.yaml --cases 4 --no-interactive
 
 experiment:
-  name: stageB_loo_2p3
-  description: "Leave-2.3cm-out: train on 2.0+2.6 cm, predict the unseen 2.3 cm case."
+  name: stageB_loo_2p3_phasebal
+  description: "Leave-2.3cm-out with phase-balanced (relative) velocity loss; predict unseen 2.3 cm."
 
 random_seed: 42
 device: cuda
-output_dir: models/stageB_loo_2p3
+output_dir: models/stageB_loo_2p3_phasebal
+
+# Phase-balanced velocity supervision (the only change vs the baseline config).
+loss_balance:
+  relative_velocity: true
 
 data:
   train_cases: [1, 7]          # 2.0 cm + 2.6 cm axisymmetric diseased
@@ -39,7 +46,7 @@ model:
 physics:
   mu: 0.0035
   rho: 1060.0
-  n_collocation: 2500   # reduced from 4000: 4 (case,phase) groups + adaptive-weight graph retention OOM'd 48 GB
+  n_collocation: 2500   # 4 (case,phase) groups + adaptive-weight graph retention; keep <48 GB
 
 loss_weights:
   velocity: 1.0

@@ -24,12 +24,26 @@ def _net_in(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
 
 def data_velocity_loss(networks: Mapping[str, nn.Module],
                        x, y, z, params,
-                       u_t, v_t, w_t) -> torch.Tensor:
-    """MSE between predicted and CFD velocity (standardized) at data points."""
+                       u_t, v_t, w_t,
+                       relative: bool = False, eps: float = 1e-8) -> torch.Tensor:
+    """Velocity data loss (standardized) at data points.
+
+    Default is absolute MSE. With ``relative=True`` the per-group squared error
+    is divided by the group's mean-square target speed, giving a *relative* L2
+    loss. This phase-balances training: with a single systolic-scale ``U_ref``
+    the diastolic targets are ~10x smaller, so absolute MSE all but ignores the
+    near-stagnant phase (the PINN over-predicts it); the relative form makes both
+    phases start at loss ~1.0 and contribute equally, and matches the rel-L2
+    validation metric.
+    """
     net_in = _net_in(x, y, z, params)
     u = networks["u"](net_in).view(-1, 1)
     v = networks["v"](net_in).view(-1, 1)
     w = networks["w"](net_in).view(-1, 1)
+    if relative:
+        num = ((u - u_t) ** 2 + (v - v_t) ** 2 + (w - w_t) ** 2).mean()
+        den = (u_t ** 2 + v_t ** 2 + w_t ** 2).mean() + eps
+        return num / den
     return _MSE(u, u_t) + _MSE(v, v_t) + _MSE(w, w_t)
 
 

@@ -21,7 +21,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from idealaorta_pinn.config import PAPER_FIGURES_DIR, PROJECT_ROOT, load_yaml  # noqa: E402
+from idealaorta_pinn.config import (FIGURES_DIR, INTERACTIVE_DIR, PAPER_FIGURES_DIR,  # noqa: E402
+                                    PROJECT_ROOT, load_yaml)
 from idealaorta_pinn.data.registry import cases_by_id, load_registry  # noqa: E402
 
 
@@ -92,23 +93,27 @@ def main() -> None:
               f"peak {r['wss_peak_cfd']:.1f}/{r['wss_peak_pinn']:.1f} Pa")
 
     # ---- figures ----
+    # Outputs are namespaced per experiment so different stages on the same case
+    # don't overwrite each other's plots (figures are keyed by case/phase only).
+    fig_dir = FIGURES_DIR / name
+    paper_dir = PAPER_FIGURES_DIR / name
+    inter_dir = INTERACTIVE_DIR / name
     if not args.no_figures:
-        from idealaorta_pinn.analysis.figures import error_vs_diameter, plane_comparison
+        from idealaorta_pinn.analysis.figures import plane_comparison
         produced = []
         for cid in cases:
             for ph in phases:
                 try:
-                    produced.append(plane_comparison(model, records, cid, ph, kind=args.fig_kind))
+                    produced.append(plane_comparison(model, records, cid, ph, kind=args.fig_kind,
+                                                     shared_scale=True, out_dir=fig_dir))
                 except Exception as e:  # noqa: BLE001
                     print(f"  [figure] skip case {cid} {ph}: {e}")
-        if vel_rows:
-            produced.append(error_vs_diameter(vel_rows))
         if not args.no_copy_paper:
-            PAPER_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+            paper_dir.mkdir(parents=True, exist_ok=True)
             for p in produced:
-                shutil.copy2(p, PAPER_FIGURES_DIR / p.name)
-        print(f"[figures] wrote {len(produced)} PNG(s) to report/figures"
-              f"{' (+ paper/figures)' if not args.no_copy_paper else ''}")
+                shutil.copy2(p, paper_dir / p.name)
+        print(f"[figures] wrote {len(produced)} PNG(s) to report/figures/{name}"
+              f"{f' (+ paper/figures/{name})' if not args.no_copy_paper else ''}")
 
     # ---- interactive ----
     if not args.no_interactive:
@@ -116,10 +121,10 @@ def main() -> None:
         for cid in cases:
             for ph in phases:
                 try:
-                    save_comparison(model, records, cid, ph)
+                    save_comparison(model, records, cid, ph, out_dir=inter_dir)
                 except Exception as e:  # noqa: BLE001
                     print(f"  [interactive] skip case {cid} {ph}: {e}")
-        print("[interactive] wrote rotatable HTML to report/interactive")
+        print(f"[interactive] wrote rotatable HTML to report/interactive/{name}")
 
 
 if __name__ == "__main__":

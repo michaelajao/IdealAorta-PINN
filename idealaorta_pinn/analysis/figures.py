@@ -99,27 +99,57 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     return path
 
 
-def error_vs_diameter(rows: List[Dict], metric: str = "vel_rel_l2",
-                      out_dir: Path = FIGURES_DIR, fname: str = "error_vs_diameter.png") -> Path:
-    """Line plot of a validation metric vs inlet diameter (parametric summary)."""
+# NOTE: the old `error_vs_diameter` line plot was removed — with a single
+# validated diameter it degenerated to one point, and it mixed the misleading
+# rel-L2 metric. A better parametric summary (one trained model evaluated across
+# its in-sample + held-out diameters, held-out point highlighted, using
+# U_ref-normalized nrmse) will be added once multi-diameter validation results
+# from a single model are available (Stage C / a full leave-one-out sweep).
+
+
+def convergence_curves(history_csv: Path, out_dir: Path = FIGURES_DIR,
+                       fname: str = "convergence.png", title: str = "") -> Path:
+    """Training convergence: component losses + model-selection monitor vs epoch.
+
+    Reads a trainer ``loss_history.csv`` and plots the raw component losses
+    (velocity, physics, pressure, WSS) and the stable ``monitor`` on a log-y
+    axis — the standard PINN convergence figure. The monitor is what drives
+    best-model / early-stopping (held-out rel-L2 if configured, else the
+    unweighted component-loss sum).
+    """
+    import csv as _csv
+
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    by_phase: Dict[str, List] = {}
-    for r in rows:
-        if metric in r and "diameter_cm" in r:
-            by_phase.setdefault(r.get("phase", "all"), []).append((r["diameter_cm"], r[metric]))
+    history_csv = Path(history_csv)
+    rows = list(_csv.DictReader(open(history_csv)))
+    if not rows:
+        raise ValueError(f"empty loss history: {history_csv}")
+    ep = [float(r["epoch"]) for r in rows]
 
-    fig, ax = plt.subplots(figsize=(6, 4.5), constrained_layout=True)
-    for phase, pts in by_phase.items():
-        xs, ys = zip(*sorted(pts))
-        ax.plot(xs, ys, "o-", label=phase)
-    ax.set_xlabel("Inlet diameter (cm)")
-    ax.set_ylabel(metric)
-    ax.set_title("Surrogate error vs inlet diameter")
-    ax.grid(True, alpha=0.3)
-    ax.legend()
+    def col(name):
+        return [float(r[name]) for r in rows] if name in rows[0] else None
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4.5), constrained_layout=True)
+    for key, lab in (("velocity", "data velocity"), ("physics", "PDE residual"),
+                     ("pressure", "wall pressure"), ("wss", "WSS")):
+        ys = col(key)
+        if ys is not None:
+            ax1.plot(ep, ys, label=lab, lw=1.3)
+    ax1.set_yscale("log"); ax1.set_xlabel("epoch"); ax1.set_ylabel("loss")
+    ax1.set_title("Component losses"); ax1.grid(True, which="both", alpha=0.25); ax1.legend(fontsize=8)
+
+    mon = col("monitor")
+    if mon is not None:
+        ax2.plot(ep, mon, color="crimson", lw=1.4)
+    ax2.set_yscale("log"); ax2.set_xlabel("epoch")
+    ax2.set_ylabel("monitor (model-selection metric)")
+    ax2.set_title("Convergence monitor"); ax2.grid(True, which="both", alpha=0.25)
+
+    if title:
+        fig.suptitle(title, fontsize=13)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / fname
     fig.savefig(path, dpi=300)

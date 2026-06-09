@@ -12,13 +12,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\3D Velocity Streamlines Systolic 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/3D Velocity Streamlines Systolic 1.778s.csv",
           "time_s": 1.778
         }
       },
@@ -26,13 +26,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\WSS and Pressure on Aneurysm at Systolic Phase 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/WSS and Pressure on Aneurysm at Systolic Phase 1.778s.csv",
           "time_s": 1.778
         }
       },
@@ -40,13 +40,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\XY Plane Velocity Streamlines Systolic 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/XY Plane Velocity Streamlines Systolic 1.778s.csv",
           "time_s": 1.778
         }
       },
@@ -54,13 +54,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 1, 2cm Inlet Axi D (Disaesed)\\PINNS\\XZ Plane Velocity Streamlines Systolic 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 1, 2cm Inlet Axi D (Disaesed)/PINNS/XZ Plane Velocity Streamlines Systolic 1.778s.csv",
           "time_s": 1.778
         }
       }
@@ -79,13 +79,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\3D Velocity Streamlines Systolic 1.788s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/3D Velocity Streamlines Systolic 1.788s.csv",
           "time_s": 1.788
         }
       },
@@ -93,13 +93,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\WSS and Pressure on Aneurysm at Systolic Phase 1.788s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/WSS and Pressure on Aneurysm at Systolic Phase 1.788s.csv",
           "time_s": 1.788
         }
       },
@@ -107,13 +107,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\XY Plane Velocity Streamlines Systolic 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/XY Plane Velocity Streamlines Systolic 1.778s.csv",
           "time_s": 1.778
         }
       },
@@ -121,13 +121,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 2, 2 cm Inlet Upper D\\PINNS\\XZ Plane Velocity Streamlines Systolic 1.778s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 2, 2 cm Inlet Upper D/PINNS/XZ Plane Velocity Streamlines Systolic 1.778s.csv",
           "time_s": 1.778
         }
       }
@@ -146,13 +146,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\3D Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/3D Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -160,13 +160,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\WSS and Pressure on Aneurysm at Systolic Phase 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/WSS and Pressure on Aneurysm at Systolic Phase 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -174,13 +174,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\XY Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/XY Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -188,13 +188,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 3, 2cm Inlet Lower D\\PINNS\\XZ Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 3, 2cm Inlet Lower D/PINNS/XZ Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       }
@@ -213,13 +213,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, 3D Velocity Streamlines Sysstolic 1.792s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, 3D Velocity Streamlines Sysstolic 1.792s.csv",
           "time_s": 1.792
         }
       },
@@ -227,13 +227,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, WSS and Pressure on Aneurysm at Systolic Phase 1.792s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, WSS and Pressure on Aneurysm at Systolic Phase 1.792s.csv",
           "time_s": 1.792
         }
       },
@@ -241,13 +241,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, XY Plane Velocity Streamlines Systolic 1.792s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, XY Plane Velocity Streamlines Systolic 1.792s.csv",
           "time_s": 1.792
         }
       },
@@ -255,13 +255,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 4, 2.3 Inlet Axi D\\PINNS\\C4, XZ Plane Velocity Streamlines Systolic 1.792s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 4, 2.3 Inlet Axi D/PINNS/C4, XZ Plane Velocity Streamlines Systolic 1.792s.csv",
           "time_s": 1.792
         }
       }
@@ -280,13 +280,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, 3D Velocity Streamlines Sysstolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, 3D Velocity Streamlines Sysstolic 1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -294,13 +294,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, WSS and Pressure on Aneurysm at Systolic Phase 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, WSS and Pressure on Aneurysm at Systolic Phase 1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -308,13 +308,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, XY Plane Velocity Streamlines Systolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, XY Plane Velocity Streamlines Systolic 1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -322,13 +322,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 5, 2.3 Inlet Upper D\\PINNS\\C5, XZ Plane Velocity Streamlines Systolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 5, 2.3 Inlet Upper D/PINNS/C5, XZ Plane Velocity Streamlines Systolic 1.787s.csv",
           "time_s": 1.787
         }
       }
@@ -347,13 +347,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, 3D Velocity Streamlines Sysstolic 1.8s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, 3D Velocity Streamlines Sysstolic 1.8s.csv",
           "time_s": 1.8
         }
       },
@@ -361,13 +361,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, WSS and Pressure on Aneurysm at Systolic Phase 1.8s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, WSS and Pressure on Aneurysm at Systolic Phase 1.8s.csv",
           "time_s": 1.8
         }
       },
@@ -375,13 +375,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, XY Plane Velocity Streamlines Systolic 1.8s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, XY Plane Velocity Streamlines Systolic 1.8s.csv",
           "time_s": 1.8
         }
       },
@@ -389,13 +389,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 6, 2.3 Inlet Lower D\\PINNS\\C6, XZ Plane Velocity Streamlines Systolic 1.8s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 6, 2.3 Inlet Lower D/PINNS/C6, XZ Plane Velocity Streamlines Systolic 1.8s.csv",
           "time_s": 1.8
         }
       }
@@ -414,13 +414,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, 3D Velocity Streamlines Sysstolic 1.815s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, 3D Velocity Streamlines Sysstolic 1.815s.csv",
           "time_s": 1.815
         }
       },
@@ -428,13 +428,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, WSS and Pressure on Aneurysm at Systolic Phase 1.815s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, WSS and Pressure on Aneurysm at Systolic Phase 1.815s.csv",
           "time_s": 1.815
         }
       },
@@ -442,13 +442,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, XY Plane Velocity Streamlines Systolic 1.815s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, XY Plane Velocity Streamlines Systolic 1.815s.csv",
           "time_s": 1.815
         }
       },
@@ -456,13 +456,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 7, 2.6 cm Inlet Axi D\\PINNS\\C7, XZ Plane Velocity Streamlines Systolic 1.815s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 7, 2.6 cm Inlet Axi D/PINNS/C7, XZ Plane Velocity Streamlines Systolic 1.815s.csv",
           "time_s": 1.815
         }
       }
@@ -481,13 +481,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, 3D Velocity Streamlines Sysstolic 1.795s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, 3D Velocity Streamlines Sysstolic 1.795s.csv",
           "time_s": 1.795
         }
       },
@@ -495,13 +495,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, WSS and Pressure on Aneurysm at Systolic Phase 1.795s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, WSS and Pressure on Aneurysm at Systolic Phase 1.795s.csv",
           "time_s": 1.795
         }
       },
@@ -509,13 +509,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, XY Plane Velocity Streamlines Systolic 1.795s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, XY Plane Velocity Streamlines Systolic 1.795s.csv",
           "time_s": 1.795
         }
       },
@@ -523,13 +523,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 8, 2.6 cm Inlet Upper D\\PINNS\\C8, XZ Plane Velocity Streamlines Systolic 1.795s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 8, 2.6 cm Inlet Upper D/PINNS/C8, XZ Plane Velocity Streamlines Systolic 1.795s.csv",
           "time_s": 1.795
         }
       }
@@ -548,13 +548,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, 3D Velocity Streamlines Sysstolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, 3D Velocity Streamlines Sysstolic 1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -562,13 +562,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, WSS and Pressure on Aneurysm at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, WSS and Pressure on Aneurysm at Systolic Phase1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, WSS and Pressure on Aneurysm at Systolic Phase1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -576,13 +576,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, XY Plane Velocity Streamlines Systolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, XY Plane Velocity Streamlines Systolic 1.787s.csv",
           "time_s": 1.787
         }
       },
@@ -590,13 +590,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 9, 2.6 cm Inlet Lower D\\PINNS\\C9, XZ Plane Velocity Streamlines Systolic 1.787s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 9, 2.6 cm Inlet Lower D/PINNS/C9, XZ Plane Velocity Streamlines Systolic 1.787s.csv",
           "time_s": 1.787
         }
       }
@@ -615,13 +615,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, 3D Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, 3D Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -629,13 +629,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -643,13 +643,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, XY Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, XY Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -657,13 +657,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 10, 2 cm Inlet H (Healthy)\\PINNS\\C10, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 10, 2 cm Inlet H (Healthy)/PINNS/C10, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       }
@@ -682,13 +682,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, 3D Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, 3D Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -696,13 +696,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -710,13 +710,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, XY Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, XY Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -724,13 +724,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 11, 2.3 cm Inlet H\\PINNS\\C11, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 11, 2.3 cm Inlet H/PINNS/C11, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       }
@@ -749,13 +749,13 @@
         "diastolic": {
           "kind": "3D",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, 3D Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, 3D Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "3D",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, 3D Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, 3D Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -763,13 +763,13 @@
         "diastolic": {
           "kind": "WSS",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Diastolic Phase 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "WSS",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, WSS and Pressure of Wall (Iso Clip 1+ Iso Clip ) at Syastolic Phase 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -777,13 +777,13 @@
         "diastolic": {
           "kind": "XY",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, XY Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XY",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, XY Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, XY Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       },
@@ -791,13 +791,13 @@
         "diastolic": {
           "kind": "XZ",
           "phase": "diastolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, XZ Plane Velocity Streamlines Diastolic 2.4s.csv",
           "time_s": 2.4
         },
         "systolic": {
           "kind": "XZ",
           "phase": "systolic",
-          "path": "C:\\Users\\ajaoo\\Documents\\GitHub\\IdealAorta-PINN\\data\\raw\\Case 12, 2.6 cm Inlet H\\PINNS\\C12, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
+          "path": "/home/olarinoyem/IdealAorta-PINN/data/raw/Case 12, 2.6 cm Inlet H/PINNS/C12, XZ Plane Velocity Streamlines Systolic 1.775s.csv",
           "time_s": 1.775
         }
       }

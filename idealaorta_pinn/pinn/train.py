@@ -39,6 +39,10 @@ class Trainer:
     def __init__(self, config: Dict):
         self.cfg = config
         self.name = config["experiment"]["name"]
+        # Phase-balanced velocity supervision: relative (per-group) velocity loss
+        # so the near-stagnant diastolic phase is not swamped by systolic-scale
+        # magnitudes under the single U_ref (off by default; opt-in per config).
+        self.vel_relative = bool(config.get("loss_balance", {}).get("relative_velocity", False))
         seed = int(config.get("random_seed", 42))
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -159,7 +163,7 @@ class Trainer:
             if "vx" in t:
                 acc["velocity"] = acc["velocity"] + data_velocity_loss(
                     self.networks, t["vx"], t["vy"], t["vz"], t["v_params"],
-                    t["u_t"], t["v_t"], t["w_t"])
+                    t["u_t"], t["v_t"], t["w_t"], relative=self.vel_relative)
                 pl, _ = compute_physics_loss(
                     self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
                 acc["physics"] = acc["physics"] + pl
@@ -214,8 +218,12 @@ class Trainer:
         ref_norm = grad_norms[ref]
         for c, gn in grad_norms.items():
             raw = ref_norm / max(gn, 1e-12)
+            # EMA smoothing: alpha is the memory weight (Wang/Teng/Perdikaris 2021).
+            # alpha=0.9 keeps 90% of the previous weight, damping the noisy
+            # instantaneous gradient-norm ratio `raw`. Seeds to `raw` on the first
+            # update for a component (get default), so no init discontinuity.
             self.adaptive_weights[c] = (
-                (1 - alpha) * self.adaptive_weights.get(c, raw) + alpha * raw)
+                alpha * self.adaptive_weights.get(c, raw) + (1 - alpha) * raw)
         for c in COMPONENTS:
             self.adaptive_weights.setdefault(c, 1.0)
             self.adaptive_weights[c] = min(self.adaptive_weights[c], cap)
