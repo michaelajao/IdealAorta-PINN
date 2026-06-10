@@ -28,11 +28,13 @@ REGISTRY_PATH: Path = DATA_DIR / "registry.json"
 # Trained models live in a top-level models/ folder (one subfolder per experiment).
 MODELS_DIR: Path = PROJECT_ROOT / "models"
 
-# Deliverables live in a top-level report/ folder: figures, metrics, interactive.
+# Deliverables live in a top-level report/ folder, namespaced by output kind and experiment.
 REPORT_DIR: Path = PROJECT_ROOT / "report"
 FIGURES_DIR: Path = REPORT_DIR / "figures"          # paper-ready PNG figures
 METRICS_DIR: Path = REPORT_DIR / "metrics"          # CSV/JSON + human-readable .txt
+TABLES_DIR: Path = REPORT_DIR / "tables"            # reference tables and paper CSVs
 INTERACTIVE_DIR: Path = REPORT_DIR / "interactive"  # rotatable 3D Plotly HTML
+LOGS_DIR: Path = REPORT_DIR / "logs"                # run logs, one subfolder per experiment
 
 # Manuscript: LaTeX fragments, bibliography, and a copy of the figures used.
 PAPER_DIR: Path = PROJECT_ROOT / "paper"
@@ -52,7 +54,7 @@ DEFAULT_DATA_SOURCE: Path = Path(
 
 def ensure_output_dirs() -> None:
     """Create the standard model/report/paper directories if they do not exist."""
-    for d in (MODELS_DIR, REPORT_DIR, FIGURES_DIR, METRICS_DIR, INTERACTIVE_DIR,
+    for d in (MODELS_DIR, REPORT_DIR, FIGURES_DIR, METRICS_DIR, TABLES_DIR, INTERACTIVE_DIR, LOGS_DIR,
               PAPER_DIR, PAPER_FIGURES_DIR):
         d.mkdir(parents=True, exist_ok=True)
 

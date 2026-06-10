@@ -90,15 +90,16 @@ def wss_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int
     }
 
 
-def write_report(rows: List[Dict], name: str, title: str = "") -> Path:
-    """Write metrics to JSON + CSV + a human-readable TXT under report/metrics."""
-    METRICS_DIR.mkdir(parents=True, exist_ok=True)
+def write_report(rows: List[Dict], name: str, title: str = "", out_dir: Path = METRICS_DIR) -> Path:
+    """Write metrics to JSON + CSV + a human-readable TXT under ``out_dir``."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     rows = [r for r in rows if r is not None]
-    (METRICS_DIR / f"{name}.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    (out_dir / f"{name}.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
 
     if rows:
         keys = list(rows[0].keys())
-        with open(METRICS_DIR / f"{name}.csv", "w", newline="") as f:
+        with open(out_dir / f"{name}.csv", "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=keys, extrasaction="ignore")
             w.writeheader()
             w.writerows(rows)
@@ -109,7 +110,7 @@ def write_report(rows: List[Dict], name: str, title: str = "") -> Path:
         body = "  ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}"
                          for k, v in r.items() if k not in ("case", "phase"))
         lines.append(f"{head:>18} | {body}")
-    txt = METRICS_DIR / f"{name}.txt"
+    txt = out_dir / f"{name}.txt"
     txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return txt
 

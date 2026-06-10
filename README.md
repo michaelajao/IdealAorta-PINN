@@ -108,9 +108,15 @@ python scripts/run.py --config configs/stageC_hpc.yaml        # full study, 48 G
 #   detach with Ctrl-b then d;  reattach with: tmux attach -t ideal
 ```
 
-Outputs land in `models/`, `report/{figures,metrics,interactive}`, and `paper/figures/` exactly as
-locally. Use `--device cuda` (default) and, if you hit memory limits, lower `loaders.max_velocity_points`
-or `physics.n_collocation` in the config.
+Outputs land in experiment-scoped folders: `models/<experiment>/` for checkpoints and training
+history, `report/{figures,metrics,tables,interactive,logs}/<experiment>/` for generated outputs,
+and `paper/figures/<experiment>/` for manuscript figure copies. Use `--device cuda` (default) and,
+if you hit memory limits, lower `loaders.max_velocity_points` or `physics.n_collocation` in the
+config.
+
+When training an experiment that already has outputs, `scripts/run.py` archives the existing model,
+report, and paper-figure folders into sibling `_archive/` directories before starting the new run.
+Pass `--overwrite-output` only when you intentionally want to replace outputs in place.
 
 ## Method (summary)
 
@@ -123,12 +129,15 @@ or `physics.n_collocation` in the config.
 - **Data fit:** dense XY/XZ plane velocities + sparse 3D streamline velocities + wall pressure/WSS;
   WSS computed from the velocity gradient at the wall.
 - **Loss balancing:** gradient-norm adaptive weighting (Wang et al. 2021) with EMA.
-- **Validation:** leave-one-diameter-out vs CFD (relative L2 on velocity, WSS error, recirculation,
-  D1–D8 slice cross-check against `Results on Slices.xlsx`).
+- **Validation:** leave-one-diameter-out vs CFD (relative L2 on velocity, U_ref-normalized NRMSE,
+  WSS error, and recirculation). Reference slice CSVs are kept as tables, not plotted as xlsx
+  comparisons.
 
 See `outputs/methods_pinn.tex` / `outputs/results_pinn.tex` (generated in Stage C) for manuscript text.
 
 ## Reproducibility
 
-Every training run writes a checkpoint, a config snapshot, the resolved non-dimensional reference
-scales, the random seed, and CSV metrics under `outputs/models/<experiment>/`.
+Every training run writes checkpoints, the fitted normalizer, loss history, resolved reference
+scales, and the random seed under `models/<experiment>/`. Validation outputs are separated by type
+under `report/`: figures, metrics, tables, interactive HTML, and logs each live in their own
+`<experiment>/` folder.
