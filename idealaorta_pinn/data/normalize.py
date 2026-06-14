@@ -37,6 +37,12 @@ class Normalizer:
     D_ref: float = 1.0
     p_mean: float = 0.0
     wss_std: float = 1.0
+    # S1 (per-phase velocity scaling): the geometry/physics scales (U_ref, Re,
+    # P_ref, tau_ref) are pinned to the SYSTOLIC regime. When per-phase scaling is
+    # enabled, ``u_ref_diastolic`` holds the diastolic velocity scale; the velocity
+    # nets then emit O(1) for both phases and a per-phase gain s=u_ref_phase/U_ref
+    # converts to the single physics scale (s=1 for systole -> systole unchanged).
+    u_ref_diastolic: Optional[float] = None
 
     # ---- derived ----
     @property
@@ -58,24 +64,34 @@ class Normalizer:
             diameters_cm: np.ndarray,
             pressure: Optional[np.ndarray] = None,
             wss_components: Optional[np.ndarray] = None,
-            u_quantile: float = 0.995) -> "Normalizer":
+            u_quantile: float = 0.995,
+            speed_systolic: Optional[np.ndarray] = None,
+            speed_diastolic: Optional[np.ndarray] = None) -> "Normalizer":
         """Fit scales from pooled TRAINING data arrays.
 
         Args:
             coords: (N,3) physical coordinates (m).
-            speed: (N,) velocity magnitudes (m/s).
+            speed: (N,) velocity magnitudes (m/s) — pooled (used when no per-phase split).
             diameters_cm: (N,) or (k,) inlet diameters present in training (cm).
             pressure: (M,) wall pressures (Pa), optional.
             wss_components: (M,3) wall-shear components (Pa), optional.
             u_quantile: robust upper quantile for U_ref (avoids outliers).
+            speed_systolic/speed_diastolic: if both given (S1), U_ref is fit on the
+                SYSTOLIC speeds (so the physics scale = systolic, s_systolic=1) and
+                ``u_ref_diastolic`` on the diastolic speeds.
         """
         coords = np.asarray(coords, dtype=np.float64)
         self.x_mean = coords.mean(axis=0).tolist()
         extent = float((coords.max(axis=0) - coords.min(axis=0)).max())
         self.L = max(0.5 * extent, 1e-6)
 
-        spd = np.asarray(speed, dtype=np.float64)
-        self.U_ref = max(float(np.quantile(spd, u_quantile)), 1e-3)
+        if speed_systolic is not None and speed_diastolic is not None and len(speed_systolic):
+            self.U_ref = max(float(np.quantile(np.asarray(speed_systolic, float), u_quantile)), 1e-3)
+            self.u_ref_diastolic = max(
+                float(np.quantile(np.asarray(speed_diastolic, float), u_quantile)), 1e-3)
+        else:
+            spd = np.asarray(speed, dtype=np.float64)
+            self.U_ref = max(float(np.quantile(spd, u_quantile)), 1e-3)
 
         self.D_ref = float(np.mean(np.asarray(diameters_cm, dtype=np.float64)))
 
@@ -104,6 +120,18 @@ class Normalizer:
     def diameter_nd(self, d_cm: float) -> float:
         return float(d_cm) / self.D_ref
 
+    def vel_phase_gain(self, phase: str) -> float:
+        """Per-phase velocity gain s = U_ref_phase / U_ref (S1).
+
+        The velocity nets emit O(1) for both phases; multiplying by this gain
+        yields the single-scale standardized velocity u_s the physics/WSS/BC use.
+        s=1.0 for systole (and whenever per-phase scaling is disabled), so systole
+        is byte-identical to the single-scale model.
+        """
+        if self.u_ref_diastolic is None or phase == "systolic":
+            return 1.0
+        return float(self.u_ref_diastolic) / float(self.U_ref)
+
     # ---- de-normalization (for reporting in physical units) ----
     def vel_to_physical(self, uvw_nd: np.ndarray) -> np.ndarray:
         return np.asarray(uvw_nd) * self.U_ref
@@ -129,7 +157,7 @@ class Normalizer:
         """Rebuild from a ``to_dict()`` payload (derived fields are recomputed)."""
         return cls(mu=d["mu"], rho=d["rho"], x_mean=d["x_mean"], L=d["L"],
                    U_ref=d["U_ref"], D_ref=d["D_ref"], p_mean=d["p_mean"],
-                   wss_std=d["wss_std"])
+                   wss_std=d["wss_std"], u_ref_diastolic=d.get("u_ref_diastolic"))
 
     @classmethod
     def load(cls, path: str | Path) -> "Normalizer":

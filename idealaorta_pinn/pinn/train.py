@@ -43,6 +43,10 @@ class Trainer:
         # so the near-stagnant diastolic phase is not swamped by systolic-scale
         # magnitudes under the single U_ref (off by default; opt-in per config).
         self.vel_relative = bool(config.get("loss_balance", {}).get("relative_velocity", False))
+        # S1: per-phase velocity scaling — geometry/physics scale stays systolic;
+        # the velocity nets emit O(1) for both phases and the data-loss budget is
+        # equalized per phase. Supersedes relative_velocity (don't enable both).
+        self.per_phase_vel = bool(config.get("loss_balance", {}).get("per_phase_velocity_scale", False))
         seed = int(config.get("random_seed", 42))
         torch.manual_seed(seed)
         np.random.seed(seed)
@@ -83,13 +87,18 @@ class Trainer:
 
         print(f"[trainer] fitting normalizer on cases {train_cases}, phases {phases}")
         self.normalizer: Normalizer = fit_normalizer(
-            records, train_cases, phases, mu=mu, rho=rho)
+            records, train_cases, phases, mu=mu, rho=rho,
+            per_phase_velocity_scale=self.per_phase_vel)
         if phys.get("re_override"):
             self._Re = float(phys["re_override"])
         else:
             self._Re = self.normalizer.Re
         print(f"[trainer] U_ref={self.normalizer.U_ref:.4f} m/s  L={self.normalizer.L:.4f} m  "
               f"Re={self._Re:.1f}  wss_std={self.normalizer.wss_std:.4f}")
+        if self.per_phase_vel and self.normalizer.u_ref_diastolic is not None:
+            print(f"[trainer] S1 per-phase velocity scaling ON: "
+                  f"U_ref_diastolic={self.normalizer.u_ref_diastolic:.4f} m/s, "
+                  f"diastolic gain s={self.normalizer.vel_phase_gain('diastolic'):.4f}")
 
         ld = self.cfg.get("loaders", {})
         self.bundle: Bundle = build_bundle(
@@ -131,6 +140,9 @@ class Trainer:
             nut_num_layers=int(nut.get("num_layers", 4)),
             nu_t_min=float(nut.get("nu_t_min", 1e-3)),
             initial_nut=float(nut.get("initial_nut", 0.05)),
+            vel_phase_gain=(self.normalizer.vel_phase_gain("diastolic")
+                            if self.per_phase_vel and self.normalizer.u_ref_diastolic is not None
+                            else None),
             device=self.device,
         )
         total = sum(count_parameters(n) for n in self.networks.values())
@@ -163,7 +175,8 @@ class Trainer:
             if "vx" in t:
                 acc["velocity"] = acc["velocity"] + data_velocity_loss(
                     self.networks, t["vx"], t["vy"], t["vz"], t["v_params"],
-                    t["u_t"], t["v_t"], t["w_t"], relative=self.vel_relative)
+                    t["u_t"], t["v_t"], t["w_t"], relative=self.vel_relative,
+                    phase_gain=self.normalizer.vel_phase_gain(g.phase))
                 pl, _ = compute_physics_loss(
                     self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
                 acc["physics"] = acc["physics"] + pl

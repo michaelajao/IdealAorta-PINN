@@ -55,12 +55,22 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
     u_ref = model.normalizer.U_ref
     vel_nrmse_uref = float(np.sqrt(np.mean((pred_v - true) ** 2)) / u_ref)
     speed_nrmse_uref = float(np.sqrt(np.mean((pred["speed"] - true_speed) ** 2)) / u_ref)
+    # Q1: per-PHASE NRMSE, normalized by THIS phase's own speed scale (0.995-quantile
+    # of the phase's true speed) instead of the global (systolic-scale) U_ref. The
+    # global-U_ref NRMSE hides diastolic collapse (a 12x over-prediction reads as a
+    # benign few-percent); the per-phase NRMSE exposes it. This is the honest metric.
+    phase_u_ref = max(float(np.quantile(true_speed, 0.995)), 1e-6)
+    vel_nrmse_phase = float(np.sqrt(np.mean((pred_v - true) ** 2)) / phase_u_ref)
+    speed_nrmse_phase = float(np.sqrt(np.mean((pred["speed"] - true_speed) ** 2)) / phase_u_ref)
     return {
         "case": case_id, "phase": phase, "kind": kind, "n_points": int(len(df)),
         "vel_rel_l2": _rel_l2(pred_v, true),
         "speed_rel_l2": _rel_l2(pred["speed"], true_speed),
         "vel_nrmse_uref": vel_nrmse_uref,
         "speed_nrmse_uref": speed_nrmse_uref,
+        "phase_u_ref": phase_u_ref,
+        "vel_nrmse_phase": vel_nrmse_phase,
+        "speed_nrmse_phase": speed_nrmse_phase,
         "recirc_cfd": recirculation_fraction(true),
         "recirc_pinn": recirculation_fraction(pred_v),
     }

@@ -89,12 +89,18 @@ class FieldNet(nn.Module):
                  use_fourier: bool = True,
                  use_param_encoder: bool = True,
                  param_encoder_dims: Optional[List[int]] = None,
-                 coord_encoder_dims: Optional[List[int]] = None):
+                 coord_encoder_dims: Optional[List[int]] = None,
+                 vel_phase_gain: Optional[float] = None):
         super().__init__()
         self.n_spatial = n_spatial
         self.n_param = n_param
         self.use_fourier = use_fourier
         self.use_param_encoder = use_param_encoder and n_param > 0
+        # S1: per-phase output gain (velocity nets only). The raw output is trained
+        # to O(1) for BOTH phases; multiplying by 1.0 for systole (phase param==1)
+        # and by this diastolic gain for diastole (phase==0) yields the single-scale
+        # standardized velocity u_s that physics/WSS/BC consume. None -> no gain.
+        self.vel_phase_gain = vel_phase_gain
 
         # Coordinate encoding g_theta_c: Fourier features, optionally followed by
         # an FC coordinate encoder (literal P2INN g_theta_c).
@@ -147,7 +153,12 @@ class FieldNet(nn.Module):
         h = torch.cat([c, pp], dim=-1)
         h = self.encoder(h)
         h = self.residual_blocks(h)
-        return self.decoder(h)
+        out = self.decoder(h)
+        if self.vel_phase_gain is not None:
+            phase = params[:, -1:]                       # 1.0 systole, 0.0 diastole
+            gain = phase + (1.0 - phase) * self.vel_phase_gain
+            out = out * gain
+        return out
 
 
 class NutNet(FieldNet):
@@ -184,16 +195,21 @@ def create_networks(n_param: int = 4,
                     nut_num_layers: int = 4,
                     nu_t_min: float = 1e-3,
                     initial_nut: float = 0.05,
+                    vel_phase_gain: Optional[float] = None,
                     device: str = "cuda") -> Dict[str, nn.Module]:
-    """Create the five parametric field networks (u, v, w, p, nut)."""
+    """Create the five parametric field networks (u, v, w, p, nut).
+
+    ``vel_phase_gain`` (S1): per-phase diastolic gain applied to the u/v/w nets
+    only (p and nut are unscaled). None -> single-scale (legacy) behavior.
+    """
     common = dict(n_spatial=3, n_param=n_param, num_frequencies=num_frequencies,
                   fourier_scale=fourier_scale, use_fourier=use_fourier,
                   use_param_encoder=use_param_encoder, param_encoder_dims=param_encoder_dims,
                   coord_encoder_dims=coord_encoder_dims)
     nets = {
-        "u": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, **common),
-        "v": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, **common),
-        "w": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, **common),
+        "u": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, vel_phase_gain=vel_phase_gain, **common),
+        "v": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, vel_phase_gain=vel_phase_gain, **common),
+        "w": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, vel_phase_gain=vel_phase_gain, **common),
         "p": FieldNet(hidden_dim=hidden_dim, num_layers=num_layers, **common),
         "nut": NutNet(hidden_dim=nut_hidden_dim, num_layers=nut_num_layers,
                       nu_t_min=nu_t_min, initial_nut=initial_nut, **common),

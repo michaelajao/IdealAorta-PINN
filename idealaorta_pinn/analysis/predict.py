@@ -35,6 +35,11 @@ def load_trained(checkpoint_path: str | Path, device: str = "cuda") -> TrainedMo
     cfg = ckpt["config"]
     m = cfg["model"]
     nut = m.get("nut", {})
+    # Rebuild the normalizer first so the per-phase velocity gain (S1) can be
+    # restored into the velocity nets — otherwise predictions are mis-scaled.
+    norm = Normalizer.from_dict(ckpt["normalizer"])
+    vel_phase_gain = (norm.vel_phase_gain("diastolic")
+                      if norm.u_ref_diastolic is not None else None)
     networks = create_networks(
         n_param=int(ckpt.get("n_param", 4)),
         hidden_dim=int(m.get("hidden_dim", 128)),
@@ -49,13 +54,12 @@ def load_trained(checkpoint_path: str | Path, device: str = "cuda") -> TrainedMo
         nut_num_layers=int(nut.get("num_layers", 4)),
         nu_t_min=float(nut.get("nu_t_min", 1e-3)),
         initial_nut=float(nut.get("initial_nut", 0.05)),
+        vel_phase_gain=vel_phase_gain,
         device=device,
     )
     for k, net in networks.items():
         net.load_state_dict(ckpt["networks"][k])
         net.eval()
-
-    norm = Normalizer.from_dict(ckpt["normalizer"])
     return TrainedModel(networks=networks, normalizer=norm,
                         Re=float(ckpt.get("Re", norm.Re)), config=cfg, device=device)
 

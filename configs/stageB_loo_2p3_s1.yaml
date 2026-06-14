@@ -1,0 +1,79 @@
+# Stage B + S1 — leave-2.3cm-out with PER-PHASE VELOCITY SCALING (S1).
+# Same data/model/training as stageB_loo_2p3_long (12k epochs), plus:
+#   loss_balance.per_phase_velocity_scale: true
+# -> U_ref/Re/P_ref/tau_ref stay pinned to the SYSTOLIC scale (systole unchanged,
+#    gain s=1), the velocity nets emit O(1) for both phases, and the diastolic
+#    data-loss budget is equalized (gain s_diastolic ~ U_ref_dia/U_ref_sys).
+# Compare held-out case 4 vs stageB_loo_2p3_long; guardrail: systolic must not regress.
+#
+# Run: CUDA_VISIBLE_DEVICES=1 python scripts/run.py \
+#        --config configs/stageB_loo_2p3_s1.yaml --cases 4 --no-interactive
+
+experiment:
+  name: stageB_loo_2p3_s1
+  description: "LOO 2.3cm with S1 per-phase velocity scaling (physics single-scale); 12k epochs."
+
+random_seed: 42
+device: cuda
+output_dir: models/stageB_loo_2p3_s1
+
+loss_balance:
+  per_phase_velocity_scale: true
+
+data:
+  train_cases: [1, 7]
+  phases: [systolic, diastolic]
+  velocity_kinds: [XY, XZ, "3D"]
+
+model:
+  hidden_dim: 128
+  num_layers: 6
+  num_frequencies: 16
+  fourier_scale: 1.0
+  use_fourier: true
+  use_param_encoder: true
+  param_encoder_dims: [32, 32]
+  coord_encoder_dims: null
+  nut:
+    hidden_dim: 64
+    num_layers: 4
+    nu_t_min: 1.0e-3
+    initial_nut: 0.02
+    lr_multiplier: 10.0
+
+physics:
+  mu: 0.0035
+  rho: 1060.0
+  n_collocation: 2500
+
+loss_weights:
+  velocity: 1.0
+  physics: 0.01
+  pressure: 1.0
+  wss: 1.0
+  noslip: 10.0
+  inlet: 1.0
+  outlet: 1.0
+
+adaptive_weights:
+  enabled: true
+  update_interval: 250
+  alpha: 0.9
+  ref: velocity
+  weight_cap: 50.0
+  physics_floor: 0.01
+
+training:
+  epochs: 12000
+  lr: 1.0e-4
+  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  gradient_clip: 1.0
+  eval_interval: 250
+  save_interval: 1000
+  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
+
+loaders:
+  max_velocity_points: 20000
+  wall_normals_method: auto
+  inlet_n_radial: 6
+  inlet_n_angular: 12

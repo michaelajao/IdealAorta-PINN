@@ -111,32 +111,44 @@ def _params_array(norm: Normalizer, diameter_cm: float, beta: float, disease_fla
 
 def fit_normalizer(records: Sequence[CaseRecord], case_ids: Sequence[int],
                    phases: Sequence[str], mu: float, rho: float,
-                   max_points: int = 60_000, seed: int = 42) -> Normalizer:
-    """Fit the global Normalizer on the pooled TRAIN-case data."""
+                   max_points: int = 60_000, seed: int = 42,
+                   per_phase_velocity_scale: bool = False) -> Normalizer:
+    """Fit the global Normalizer on the pooled TRAIN-case data.
+
+    With ``per_phase_velocity_scale`` (S1), U_ref is fit on the systolic speeds and
+    a separate diastolic velocity scale is stored, so the near-stagnant phase gets
+    O(1) standardized targets while the physics scale stays systolic.
+    """
     rng = np.random.default_rng(seed)
     by_id = {r.case_id: r for r in records}
     coords_all, speed_all, diam_all, p_all, wss_all = [], [], [], [], []
+    speed_sys, speed_dia = [], []
     for cid in case_ids:
         rec = by_id[cid]
         for phase in phases:
             vp = _load_velocity_points(rec, phase, max_points, rng)
             if vp is not None:
                 coords, vel = vp
+                spd = np.linalg.norm(vel, axis=1)
                 coords_all.append(coords)
-                speed_all.append(np.linalg.norm(vel, axis=1))
+                speed_all.append(spd)
                 diam_all.append(rec.inlet_diameter_cm)
+                (speed_sys if phase == "systolic" else speed_dia).append(spd)
             wp = _load_wall_points(rec, phase)
             if wp is not None:
                 _, p, wss = wp
                 p_all.append(p.ravel())
                 wss_all.append(wss)
     norm = Normalizer(mu=mu, rho=rho)
+    use_phase = per_phase_velocity_scale and speed_sys and speed_dia
     norm.fit(
         coords=np.vstack(coords_all),
         speed=np.concatenate(speed_all),
         diameters_cm=np.array(diam_all),
         pressure=np.concatenate(p_all) if p_all else None,
         wss_components=np.vstack(wss_all) if wss_all else None,
+        speed_systolic=np.concatenate(speed_sys) if use_phase else None,
+        speed_diastolic=np.concatenate(speed_dia) if use_phase else None,
     )
     return norm
 
