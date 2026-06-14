@@ -164,13 +164,17 @@ def build_bundle(records: Sequence[CaseRecord],
                  inlet_n_radial: int = 6,
                  inlet_n_angular: int = 12,
                  velocity_kinds: Sequence[str] = VELOCITY_KINDS,
+                 volumetric_collocation: bool = False,
                  seed: int = 42) -> Bundle:
     """Build standardized training tensors for the given cases and phases.
 
     ``velocity_kinds`` selects which velocity sources to supervise on; pass e.g.
     ``("XY", "3D")`` to hold out the XZ plane for validation (Stage A de-risk).
+    ``volumetric_collocation`` (S2): replace the data-plane collocation subsample
+    with points rejection-sampled inside the 3D lumen, so the PDE residual
+    constrains the off-plane interior (needs wall points for the interior mask).
     """
-    from .geometry import cross_section_points, detect_inlet_outlet
+    from .geometry import cross_section_points, detect_inlet_outlet, sample_lumen_interior
 
     rng = np.random.default_rng(seed)
     by_id = {r.case_id: r for r in records}
@@ -226,6 +230,21 @@ def build_bundle(records: Sequence[CaseRecord],
                 t["p_t"] = _t(normalizer.pressure_std(p), device)
                 t["wss_t"] = _t(normalizer.wss_std_target(wss), device)
                 t["normals"] = _t(normals, device)
+
+                # ---- S2: volumetric interior collocation ----
+                # Override the data-plane subsample (cx/cy/cz from the velocity block,
+                # which lives ~98% on two CFD planes) with points that fill the 3D
+                # lumen, so the PDE residual constrains the off-plane interior + bulge
+                # core. Falls back to the data subsample if the interior mask is thin.
+                if volumetric_collocation:
+                    coll = sample_lumen_interior(wcs, normals, n_collocation, rng)
+                    if len(coll) >= max(int(0.5 * n_collocation), 100):
+                        cparams = _params_array(normalizer, rec.inlet_diameter_cm,
+                                                _beta_value(rec), rec.disease_flag, phase, len(coll))
+                        t["cx"] = _t(coll[:, 0:1], device)
+                        t["cy"] = _t(coll[:, 1:2], device)
+                        t["cz"] = _t(coll[:, 2:3], device)
+                        t["c_params"] = _t(cparams, device)
 
                 # ---- inlet / outlet BC points (from wall geometry) ----
                 io = detect_inlet_outlet(wcs)

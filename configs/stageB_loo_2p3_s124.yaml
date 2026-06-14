@@ -1,0 +1,79 @@
+# Stage B + S1 + S2 + S4 — leave-2.3cm-out with the full structural fix stack.
+#   S1 loss_balance.per_phase_velocity_scale : per-phase velocity scaling (diastole)
+#   S2 loaders.volumetric_collocation        : PDE residual on true 3D lumen interior
+#   S4 model.anisotropic_fourier             : per-axis Fourier bandwidth (transverse)
+# S3 (phase-Re) is intentionally omitted: S1 keeps the physics velocity single-scale,
+# so the momentum residual is the same correctly-nondimensionalized NS for both phases.
+# physics_floor raised (Q3) now that collocation is volumetric and meaningful.
+# Compare held-out case 4 vs stageB_loo_2p3_s1 (S1 only) and the baseline.
+
+experiment:
+  name: stageB_loo_2p3_s124
+  description: "LOO 2.3cm with S1 per-phase scaling + S2 volumetric collocation + S4 anisotropic Fourier."
+
+random_seed: 42
+device: cuda
+output_dir: models/stageB_loo_2p3_s124
+
+loss_balance:
+  per_phase_velocity_scale: true        # S1
+
+data:
+  train_cases: [1, 7]
+  phases: [systolic, diastolic]
+  velocity_kinds: [XY, XZ, "3D"]
+
+model:
+  hidden_dim: 128
+  num_layers: 6
+  num_frequencies: 16
+  fourier_scale: 1.0
+  anisotropic_fourier: true             # S4
+  use_fourier: true
+  use_param_encoder: true
+  param_encoder_dims: [32, 32]
+  coord_encoder_dims: null
+  nut:
+    hidden_dim: 64
+    num_layers: 4
+    nu_t_min: 1.0e-3
+    initial_nut: 0.02
+    lr_multiplier: 10.0
+
+physics:
+  mu: 0.0035
+  rho: 1060.0
+  n_collocation: 2500
+
+loss_weights:
+  velocity: 1.0
+  physics: 0.05                         # Q3: raise now that collocation is volumetric
+  pressure: 1.0
+  wss: 1.0
+  noslip: 10.0
+  inlet: 1.0
+  outlet: 1.0
+
+adaptive_weights:
+  enabled: true
+  update_interval: 250
+  alpha: 0.9
+  ref: velocity
+  weight_cap: 50.0
+  physics_floor: 0.05                    # Q3: give the interior physics authority
+
+training:
+  epochs: 18000                         # runs keep improving past 12k (no early-stop); give more budget
+  lr: 1.0e-4
+  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  gradient_clip: 1.0
+  eval_interval: 250
+  save_interval: 1000
+  early_stopping: {enabled: true, patience: 2500, min_delta: 1.0e-5}
+
+loaders:
+  max_velocity_points: 20000
+  volumetric_collocation: true          # S2
+  wall_normals_method: auto
+  inlet_n_radial: 6
+  inlet_n_angular: 12

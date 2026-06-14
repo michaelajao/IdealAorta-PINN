@@ -54,10 +54,18 @@ class FourierFeatures(nn.Module):
     Maps a ``(N, n_spatial)`` coordinate tensor to ``[sin(2pi B x), cos(2pi B x)]``.
     """
 
-    def __init__(self, n_spatial: int, num_frequencies: int = 16, scale: float = 1.0):
+    def __init__(self, n_spatial: int, num_frequencies: int = 16, scale=1.0):
         super().__init__()
         self.n_spatial = n_spatial
-        B = torch.randn(n_spatial, num_frequencies) * scale
+        # S4: ``scale`` may be a scalar (isotropic, standard Tancik) OR a per-axis
+        # vector of length n_spatial (anisotropic). A per-axis scale gives each
+        # spatial axis its own Fourier bandwidth — used to match the encoding's
+        # resolution to an anisotropic standardized domain (long thin vessel), so
+        # the transverse shear layer / recirculation are not under-resolved.
+        s = torch.as_tensor(scale, dtype=torch.float32)
+        if s.ndim == 0:
+            s = s.expand(n_spatial)
+        B = torch.randn(n_spatial, num_frequencies) * s.view(n_spatial, 1)
         self.register_buffer("B", B)
         self.out_features = 2 * num_frequencies
 

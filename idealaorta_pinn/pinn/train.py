@@ -109,7 +109,12 @@ class Trainer:
             inlet_n_radial=int(ld.get("inlet_n_radial", 6)),
             inlet_n_angular=int(ld.get("inlet_n_angular", 12)),
             velocity_kinds=velocity_kinds,
+            volumetric_collocation=bool(ld.get("volumetric_collocation", False)),
         )
+        if bool(ld.get("volumetric_collocation", False)):
+            n_coll = [int(g.tensors["cx"].shape[0]) for g in self.bundle.groups if "cx" in g.tensors]
+            print(f"[trainer] S2 volumetric collocation ON: "
+                  f"{sum(n_coll)} interior points across {len(n_coll)} groups")
         print(f"[trainer] built {len(self.bundle.groups)} (case,phase) groups")
 
         # Optional held-out velocity slice for validation (Stage A de-risk).
@@ -126,12 +131,26 @@ class Trainer:
     def _build_networks(self) -> None:
         m = self.cfg["model"]
         nut = m.get("nut", {})
+        # S4: anisotropic Fourier — give each spatial axis a bandwidth matched to
+        # its standardized span, so the transverse directions (short, fast-varying)
+        # are not under-resolved by an isotropic basis tuned to the axial extent.
+        fourier_scale = float(m.get("fourier_scale", 1.0))
+        if m.get("anisotropic_fourier", False):
+            spans = []
+            for ax in ("vx", "vy", "vz"):
+                vals = [g.tensors[ax] for g in self.bundle.groups if ax in g.tensors]
+                spans.append(float((torch.cat(vals).max() - torch.cat(vals).min())) if vals else 1.0)
+            spans = np.asarray(spans)
+            aniso = spans.max() / np.maximum(spans, 1e-6)        # axial=1, transverse>1
+            fourier_scale = (fourier_scale * aniso).tolist()
+            print(f"[trainer] S4 anisotropic Fourier: per-axis scale "
+                  f"{[round(s, 2) for s in fourier_scale]} (std spans {spans.round(3).tolist()})")
         self.networks = create_networks(
             n_param=self.bundle.n_param,
             hidden_dim=int(m.get("hidden_dim", 128)),
             num_layers=int(m.get("num_layers", 6)),
             num_frequencies=int(m.get("num_frequencies", 16)),
-            fourier_scale=float(m.get("fourier_scale", 1.0)),
+            fourier_scale=fourier_scale,
             use_fourier=bool(m.get("use_fourier", True)),
             use_param_encoder=bool(m.get("use_param_encoder", True)),
             param_encoder_dims=m.get("param_encoder_dims"),
