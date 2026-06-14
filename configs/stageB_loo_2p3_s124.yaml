@@ -69,7 +69,7 @@ training:
   gradient_clip: 1.0
   eval_interval: 250
   save_interval: 1000
-  early_stopping: {enabled: true, patience: 2500, min_delta: 1.0e-5}
+  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
 
 loaders:
   max_velocity_points: 20000
