@@ -182,7 +182,11 @@ class NutNet(FieldNet):
     def __init__(self, *args, initial_nut: float = 0.05, nu_t_min: float = 1e-3, **kwargs):
         super().__init__(*args, **kwargs)
         self.nu_t_min = nu_t_min
-        target_raw = math.log(math.expm1(max(initial_nut, 1e-8)))
+        # C3: forward is softplus(raw+SHIFT)+nu_t_min, so to make the init output
+        # equal `initial_nut` we must subtract the floor before inverting softplus
+        # (the previous code ignored +nu_t_min, biasing init high by the floor).
+        nut_above_floor = max(initial_nut - nu_t_min, 1e-8)
+        target_raw = math.log(math.expm1(nut_above_floor))
         nn.init.constant_(self.decoder.bias, target_raw - self.SOFTPLUS_SHIFT)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import time
 from pathlib import Path
 from typing import Dict, List
@@ -47,9 +48,16 @@ class Trainer:
         # the velocity nets emit O(1) for both phases and the data-loss budget is
         # equalized per phase. Supersedes relative_velocity (don't enable both).
         self.per_phase_vel = bool(config.get("loss_balance", {}).get("per_phase_velocity_scale", False))
-        seed = int(config.get("random_seed", 42))
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+        # R1/R2: one seed, propagated to torch (CPU+CUDA), numpy, AND the data
+        # pipeline (fit_normalizer / build_bundle below), plus deterministic kernels,
+        # so changing random_seed actually changes the whole run reproducibly.
+        self.seed = int(config.get("random_seed", 42))
+        torch.manual_seed(self.seed)
+        torch.cuda.manual_seed_all(self.seed)
+        np.random.seed(self.seed)
+        if bool(config.get("deterministic", False)):
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
         self.device = config.get("device", "cuda")
         if self.device == "cuda" and not torch.cuda.is_available():
@@ -87,7 +95,7 @@ class Trainer:
 
         print(f"[trainer] fitting normalizer on cases {train_cases}, phases {phases}")
         self.normalizer: Normalizer = fit_normalizer(
-            records, train_cases, phases, mu=mu, rho=rho,
+            records, train_cases, phases, mu=mu, rho=rho, seed=self.seed,
             per_phase_velocity_scale=self.per_phase_vel)
         if phys.get("re_override"):
             self._Re = float(phys["re_override"])
@@ -110,6 +118,7 @@ class Trainer:
             inlet_n_angular=int(ld.get("inlet_n_angular", 12)),
             velocity_kinds=velocity_kinds,
             volumetric_collocation=bool(ld.get("volumetric_collocation", False)),
+            seed=self.seed,
         )
         if bool(ld.get("volumetric_collocation", False)):
             n_coll = [int(g.tensors["cx"].shape[0]) for g in self.bundle.groups if "cx" in g.tensors]
@@ -191,6 +200,14 @@ class Trainer:
         n_vel = n_wall = 0
         for g in self.bundle.groups:
             t = g.tensors
+            # C1: with S1 the velocity nets emit u_s = q*s (s = vel_phase_gain), so
+            # EVERY velocity-derived loss (data, physics residual, WSS, no-slip,
+            # inlet) scales ~s**2 and must be divided by s**2 to give both phases an
+            # equal gradient budget. Dividing only the data loss (the earlier bug)
+            # left the diastolic PDE/BC constraints suppressed ~1/s**2..1/s**4.
+            # Pressure data + outlet BC are P_ref-scaled (not velocity-gained), so
+            # they are left unchanged. s=1 for systole -> systole identical.
+            pg2 = self.normalizer.vel_phase_gain(g.phase) ** 2
             if "vx" in t:
                 acc["velocity"] = acc["velocity"] + data_velocity_loss(
                     self.networks, t["vx"], t["vy"], t["vz"], t["v_params"],
@@ -198,20 +215,20 @@ class Trainer:
                     phase_gain=self.normalizer.vel_phase_gain(g.phase))
                 pl, _ = compute_physics_loss(
                     self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
-                acc["physics"] = acc["physics"] + pl
+                acc["physics"] = acc["physics"] + pl / pg2
                 n_vel += 1
             if "wx" in t:
                 acc["pressure"] = acc["pressure"] + data_pressure_loss(
                     self.networks["p"], t["wx"], t["wy"], t["wz"], t["w_params"], t["p_t"])
                 wl, _ = wss_loss(self.networks, t["wx"], t["wy"], t["wz"], t["w_params"],
                                  t["wss_t"], t["normals"], self.normalizer.wss_std)
-                acc["wss"] = acc["wss"] + wl
+                acc["wss"] = acc["wss"] + wl / pg2
                 acc["noslip"] = acc["noslip"] + noslip_loss(
-                    self.networks, t["wx"], t["wy"], t["wz"], t["w_params"])
+                    self.networks, t["wx"], t["wy"], t["wz"], t["w_params"]) / pg2
                 axial = int(g.meta.get("axial_dim", 0))
                 acc["inlet"] = acc["inlet"] + inlet_velocity_loss(
                     self.networks, t["inlet_x"], t["inlet_y"], t["inlet_z"], t["inlet_params"],
-                    float(g.meta.get("u_inlet_nd", 0.0)), axial_dim=axial)
+                    float(g.meta.get("u_inlet_nd", 0.0)), axial_dim=axial) / pg2
                 acc["outlet"] = acc["outlet"] + outlet_pressure_loss(
                     self.networks["p"], t["outlet_x"], t["outlet_y"], t["outlet_z"], t["outlet_params"])
                 n_wall += 1
@@ -272,7 +289,7 @@ class Trainer:
             if "cx" in t:
                 pl, _ = compute_physics_loss(
                     self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
-                loss = loss + pl
+                loss = loss + pl / (self.normalizer.vel_phase_gain(g.phase) ** 2)   # C1
                 n += 1
         return loss / max(n, 1)
 
@@ -352,6 +369,13 @@ class Trainer:
                     msg += f"  holdout_relL2={holdout_metric:.4f}"
                 print(msg)
 
+            # C2: a NaN/Inf monitor must NOT masquerade as success. `NaN < x` is
+            # False in IEEE-754, so without this guard best_model.pt silently stops
+            # updating and a diverged run finishes with a stale "best". Abort loudly.
+            if not math.isfinite(monitor):
+                print(f"[trainer] ABORT: non-finite monitor ({monitor}) at epoch {epoch} "
+                      f"(diverged). Last finite best={self.best_loss:.4f}.")
+                break
             improved = monitor < self.best_loss - min_delta
             if improved:
                 self.best_loss = monitor
