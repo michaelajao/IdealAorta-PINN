@@ -70,6 +70,44 @@ def compute_wall_normals(points: np.ndarray, method: str = "auto", k: int = 16) 
     return estimate_normals_open3d(points)
 
 
+def sample_lumen_interior(wall_coords: np.ndarray, wall_normals: np.ndarray,
+                          n_points: int, rng: np.random.Generator,
+                          margin: float = 0.0, oversample: int = 12,
+                          max_batches: int = 200) -> np.ndarray:
+    """S2: uniform rejection-sample ``n_points`` inside the (non-convex) lumen.
+
+    A candidate is interior when the vector from its nearest wall point to it has
+    a POSITIVE projection on that wall point's INWARD normal (a local signed
+    distance > ``margin``). The nearest-wall + inward-normal test follows the
+    boundary into the saccular bulge, so it does not leak across the non-convex
+    geometry the way a convex hull / tube would. Returns ``(<=n_points, 3)`` in
+    the same (standardized) coordinates as ``wall_coords``.
+    """
+    from scipy.spatial import cKDTree
+
+    wall_coords = np.asarray(wall_coords, dtype=np.float64)
+    wall_normals = np.asarray(wall_normals, dtype=np.float64)
+    tree = cKDTree(wall_coords)
+    lo = wall_coords.min(axis=0)
+    hi = wall_coords.max(axis=0)
+
+    kept: List[np.ndarray] = []
+    have = 0
+    for _ in range(max_batches):
+        if have >= n_points:
+            break
+        batch = rng.uniform(lo, hi, size=(max((n_points - have) * oversample, 2048), 3))
+        _, idx = tree.query(batch)
+        signed = np.einsum("ij,ij->i", batch - wall_coords[idx], wall_normals[idx])
+        inside = batch[signed > margin]
+        if len(inside):
+            kept.append(inside)
+            have += len(inside)
+    if not kept:
+        return np.empty((0, 3), dtype=np.float64)
+    return np.vstack(kept)[:n_points]
+
+
 # ---------------------------------------------------------------------------
 # Inlet / outlet cross-section detection and sampling (standardized coords)
 # ---------------------------------------------------------------------------
