@@ -343,9 +343,11 @@ class Trainer:
             self.history.append(row)
 
             if epoch % eval_interval == 0 or epoch == 1:
-                msg = (f"  ep {epoch:>6} total={losses['total']:.4e} "
-                       f"vel={losses['velocity']:.3e} phys={losses['physics']:.3e} "
-                       f"wss={losses['wss']:.3e} p={losses['pressure']:.3e} monitor={monitor:.4f}")
+                # Show ALL raw component losses (not just a subset) so training is
+                # fully observable; loss_history.csv stores the same columns.
+                comp = "  ".join(f"{c[:4]}={losses[c]:.2e}" for c in COMPONENTS)
+                msg = (f"  ep {epoch:>6} lr={self.opt.param_groups[0]['lr']:.1e} "
+                       f"total={losses['total']:.3e}  {comp}  monitor={monitor:.4f}")
                 if holdout_metric is not None:
                     msg += f"  holdout_relL2={holdout_metric:.4f}"
                 print(msg)

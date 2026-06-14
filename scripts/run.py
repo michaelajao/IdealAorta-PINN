@@ -191,12 +191,12 @@ def main() -> None:
                 produced.append(convergence_curves(hist, out_dir=fig_dir, title=f"{name} — convergence"))
             except Exception as e:  # noqa: BLE001
                 print(f"  [figure] skip convergence: {e}")
-        if not args.no_copy_paper:
-            paper_dir.mkdir(parents=True, exist_ok=True)
-            for p in produced:
-                shutil.copy2(p, paper_dir / p.name)
-        print(f"[figures] wrote {len(produced)} PNG(s) to report/figures/{name}"
-              f"{f' (+ paper/figures/{name})' if not args.no_copy_paper else ''}")
+        # Generated figures live ONLY under report/figures/<experiment>/ (regenerable,
+        # gitignored). paper/figures/ is reserved for figures the author DELIBERATELY
+        # curates into the manuscript (tracked in git) — we do not auto-copy, so the
+        # tracked paper figures stay a hand-picked, stable set.
+        print(f"[figures] wrote {len(produced)} figure(s) to report/figures/{name} "
+              f"(curate final ones into paper/figures/ by hand)")
 
         if args.paper_reference_table:
             from idealaorta_pinn.analysis.figures_paper import slice_reference_table
