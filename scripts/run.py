@@ -163,15 +163,34 @@ def main() -> None:
     # Outputs are namespaced per experiment so different stages on the same case
     # don't overwrite each other's plots (figures are keyed by case/phase only).
     if not args.no_figures:
-        from idealaorta_pinn.analysis.figures import plane_comparison
+        from idealaorta_pinn.analysis.figures import plane_comparison, convergence_curves
+        from idealaorta_pinn.analysis.figures_paper import (wss_map, wall_pressure_map,
+                                                            velocity_profile, axial_velocity_profile)
         produced = []
         for cid in cases:
             for ph in phases:
-                try:
-                    produced.append(plane_comparison(model, records, cid, ph, kind=args.fig_kind,
-                                                     shared_scale=True, out_dir=fig_dir))
-                except Exception as e:  # noqa: BLE001
-                    print(f"  [figure] skip case {cid} {ph}: {e}")
+                # velocity field comparison (CFD | PINN | error) in BOTH planes
+                for kind in ("XY", "XZ"):
+                    try:
+                        produced.append(plane_comparison(model, records, cid, ph, kind=kind,
+                                                         shared_scale=True, out_dir=fig_dir))
+                    except Exception as e:  # noqa: BLE001
+                        print(f"  [figure] skip {kind} velocity case {cid} {ph}: {e}")
+                # WSS map, wall pressure, transverse bulge profile, axial profile
+                for label, fn in (("wss-map", wss_map), ("wall-pressure", wall_pressure_map),
+                                  ("bulge-profile", velocity_profile),
+                                  ("axial-profile", axial_velocity_profile)):
+                    try:
+                        produced.append(fn(model, records, cid, ph, out_dir=fig_dir))
+                    except Exception as e:  # noqa: BLE001
+                        print(f"  [figure] skip {label} case {cid} {ph}: {e}")
+        # training convergence curve (once per run, from loss_history.csv)
+        hist = out_dir / "loss_history.csv"
+        if hist.exists():
+            try:
+                produced.append(convergence_curves(hist, out_dir=fig_dir, title=f"{name} — convergence"))
+            except Exception as e:  # noqa: BLE001
+                print(f"  [figure] skip convergence: {e}")
         if not args.no_copy_paper:
             paper_dir.mkdir(parents=True, exist_ok=True)
             for p in produced:
