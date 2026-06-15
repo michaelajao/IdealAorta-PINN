@@ -31,7 +31,7 @@ from ..data.registry import load_registry
 from .losses import (data_pressure_loss, data_velocity_loss, inlet_velocity_loss,
                      noslip_loss, outlet_pressure_loss, relative_l2, wss_loss)
 from .model import count_parameters, create_networks
-from .physics import compute_physics_loss
+from .physics import compute_physics_loss, compute_residuals
 
 COMPONENTS = ["velocity", "physics", "pressure", "wss", "noslip", "inlet", "outlet"]
 
@@ -73,6 +73,7 @@ class Trainer:
         self._build_data()
         self._build_networks()
         self._build_optimizers()
+        self._build_batched()
 
         self.epoch = 0
         self.start_epoch = 0
@@ -199,20 +200,169 @@ class Trainer:
         self.grad_clip = float(tr.get("gradient_clip", 1.0))
 
     # ----------------------------------------------------------------- losses
+    # The total loss is the unweighted MEAN over (case,phase) groups of each
+    # component. Looping groups in Python (one forward/backward per group) leaves the
+    # GPU ~30% utilized and dominates wall-clock once there are many cases. The hot
+    # path below (_component_losses) instead runs ONE batched forward/grad over the
+    # concatenated points of every group, then takes a vectorized per-group mean
+    # (segment-mean via index_add_). It is mathematically identical to the readable
+    # per-group reference _component_losses_reference; tests/test_batched_losses.py
+    # asserts the two agree on a real bundle (both phases, S1 on).
+    #
+    # C1 reminder: with S1 the velocity nets emit u_s = q*s (s = vel_phase_gain), so
+    # every velocity-derived term (velocity, physics, wss, noslip, inlet) is divided
+    # by the group's s**2 (pg2) for an equal per-phase gradient budget; pressure +
+    # outlet (P_ref-scaled, not velocity-gained) are not. s=1 for systole.
+    def _build_batched(self) -> None:
+        """Precompute concatenated-across-groups tensors + per-point group ids and
+        per-group scales, so each loss term is one batched op instead of a loop."""
+        if self.vel_relative:
+            raise NotImplementedError(
+                "batched loss path does not support legacy relative_velocity; "
+                "use per_phase_velocity_scale (S1) instead.")
+        dev = self.device
+
+        def cat(groups, key):
+            return torch.cat([g.tensors[key] for g in groups], dim=0)
+
+        def gid_of(groups, key):
+            sizes = [g.tensors[key].shape[0] for g in groups]
+            idx = torch.cat([torch.full((s,), i, dtype=torch.long, device=dev)
+                             for i, s in enumerate(sizes)])
+            return idx, len(groups)
+
+        def pg2(groups):
+            return torch.tensor(
+                [self.normalizer.vel_phase_gain(g.phase) ** 2 for g in groups],
+                dtype=torch.float32, device=dev)
+
+        B: Dict[str, dict] = {}
+        vg = [g for g in self.bundle.groups if "vx" in g.tensors]
+        if vg:
+            gid, ng = gid_of(vg, "vx")
+            B["vel"] = dict(x=cat(vg, "vx"), y=cat(vg, "vy"), z=cat(vg, "vz"),
+                            params=cat(vg, "v_params"), ut=cat(vg, "u_t"),
+                            vt=cat(vg, "v_t"), wt=cat(vg, "w_t"), gid=gid, ng=ng, pg2=pg2(vg))
+            cgid, cng = gid_of(vg, "cx")
+            B["coll"] = dict(x=cat(vg, "cx"), y=cat(vg, "cy"), z=cat(vg, "cz"),
+                             params=cat(vg, "c_params"), gid=cgid, ng=cng, pg2=pg2(vg))
+        wg = [g for g in self.bundle.groups if "wx" in g.tensors]
+        if wg:
+            gid, ng = gid_of(wg, "wx")
+            B["wall"] = dict(x=cat(wg, "wx"), y=cat(wg, "wy"), z=cat(wg, "wz"),
+                             params=cat(wg, "w_params"), pt=cat(wg, "p_t"),
+                             wss_t=cat(wg, "wss_t"), normals=cat(wg, "normals"),
+                             gid=gid, ng=ng, pg2=pg2(wg))
+            ig = [g for g in wg if "inlet_x" in g.tensors]
+            if ig:
+                igid, ing = gid_of(ig, "inlet_x")
+                tu, tv, tw = [], [], []
+                for g in ig:
+                    n = g.tensors["inlet_x"].shape[0]
+                    ax = int(g.meta.get("axial_dim", 0))
+                    u_in = float(g.meta.get("u_inlet_nd", 0.0))
+                    cols = [torch.zeros(n, 1, device=dev) for _ in range(3)]
+                    cols[ax] = torch.full((n, 1), u_in, device=dev)
+                    tu.append(cols[0]); tv.append(cols[1]); tw.append(cols[2])
+                B["inlet"] = dict(x=cat(ig, "inlet_x"), y=cat(ig, "inlet_y"), z=cat(ig, "inlet_z"),
+                                  params=cat(ig, "inlet_params"), tu=torch.cat(tu),
+                                  tv=torch.cat(tv), tw=torch.cat(tw), gid=igid, ng=ing, pg2=pg2(ig))
+            og = [g for g in wg if "outlet_x" in g.tensors]
+            if og:
+                ogid, ong = gid_of(og, "outlet_x")
+                B["outlet"] = dict(x=cat(og, "outlet_x"), y=cat(og, "outlet_y"),
+                                   z=cat(og, "outlet_z"), params=cat(og, "outlet_params"),
+                                   gid=ogid, ng=ong)
+        self._bz = B
+
+    @staticmethod
+    def _seg_mean(per_point: torch.Tensor, gid: torch.Tensor, ng: int) -> torch.Tensor:
+        """Per-group mean of a per-point quantity (vectorized; replaces a group loop)."""
+        v = per_point.reshape(-1)
+        s = torch.zeros(ng, device=v.device, dtype=v.dtype).index_add_(0, gid, v)
+        c = torch.zeros(ng, device=v.device, dtype=v.dtype).index_add_(0, gid, torch.ones_like(v))
+        return s / c.clamp_min(1.0)
+
+    def _uvw(self, x, y, z, params):
+        net_in = torch.cat([x, y, z, params], dim=1)
+        return (self.networks["u"](net_in).view(-1, 1),
+                self.networks["v"](net_in).view(-1, 1),
+                self.networks["w"](net_in).view(-1, 1))
+
+    def _physics_batched(self, c: dict) -> torch.Tensor:
+        x = c["x"].clone().detach().requires_grad_(True)
+        y = c["y"].clone().detach().requires_grad_(True)
+        z = c["z"].clone().detach().requires_grad_(True)
+        r = compute_residuals(self.networks, x, y, z, c["params"], self._Re)
+        pp = r["res_x"] ** 2 + r["res_y"] ** 2 + r["res_z"] ** 2 + r["res_cont"] ** 2
+        return (self._seg_mean(pp, c["gid"], c["ng"]) / c["pg2"]).mean()
+
+    def _wss_noslip_pp(self, wb: dict):
+        """Per-point (WSS sq-error meaned over 3 comps, u^2+v^2+w^2) at wall points."""
+        x = wb["x"].clone().detach().requires_grad_(True)
+        y = wb["y"].clone().detach().requires_grad_(True)
+        z = wb["z"].clone().detach().requires_grad_(True)
+        u, v, w = self._uvw(x, y, z, wb["params"])
+        one = torch.ones_like(u)
+
+        def grad(o, i):
+            return torch.autograd.grad(o, i, grad_outputs=one, create_graph=True, retain_graph=True)[0]
+
+        u_x, u_y, u_z = grad(u, x), grad(u, y), grad(u, z)
+        v_x, v_y, v_z = grad(v, x), grad(v, y), grad(v, z)
+        w_x, w_y, w_z = grad(w, x), grad(w, y), grad(w, z)
+        txx, tyy, tzz = 2.0 * u_x, 2.0 * v_y, 2.0 * w_z
+        txy, txz, tyz = (u_y + v_x), (u_z + w_x), (v_z + w_y)
+        nx, ny, nz = wb["normals"][:, 0:1], wb["normals"][:, 1:2], wb["normals"][:, 2:3]
+        tx = txx * nx + txy * ny + txz * nz
+        ty = txy * nx + tyy * ny + tyz * nz
+        tz = txz * nx + tyz * ny + tzz * nz
+        tdn = tx * nx + ty * ny + tz * nz
+        ws = self.normalizer.wss_std
+        ex = (tx - tdn * nx) / ws - wb["wss_t"][:, 0:1]
+        ey = (ty - tdn * ny) / ws - wb["wss_t"][:, 1:2]
+        ez = (tz - tdn * nz) / ws - wb["wss_t"][:, 2:3]
+        wss_pp = (ex ** 2 + ey ** 2 + ez ** 2) / 3.0     # _MSE over (N,3) -> mean over comps
+        return wss_pp, u ** 2 + v ** 2 + w ** 2
+
     def _component_losses(self) -> Dict[str, torch.Tensor]:
-        """Accumulate each loss component (mean over groups) as live tensors."""
+        """Batched, math-identical reimplementation of _component_losses_reference."""
+        dev = self.device
+        acc = {c: torch.zeros((), device=dev) for c in COMPONENTS}
+        b = self._bz.get("vel")
+        if b is not None:
+            u, v, w = self._uvw(b["x"], b["y"], b["z"], b["params"])
+            sq = (u - b["ut"]) ** 2 + (v - b["vt"]) ** 2 + (w - b["wt"]) ** 2
+            acc["velocity"] = (self._seg_mean(sq, b["gid"], b["ng"]) / b["pg2"]).mean()
+        c = self._bz.get("coll")
+        if c is not None:
+            acc["physics"] = self._physics_batched(c)
+        wb = self._bz.get("wall")
+        if wb is not None:
+            p = self.networks["p"](torch.cat([wb["x"], wb["y"], wb["z"], wb["params"]], dim=1)).view(-1, 1)
+            acc["pressure"] = self._seg_mean((p - wb["pt"]) ** 2, wb["gid"], wb["ng"]).mean()
+            wss_pp, uvw_sq = self._wss_noslip_pp(wb)
+            acc["wss"] = (self._seg_mean(wss_pp, wb["gid"], wb["ng"]) / wb["pg2"]).mean()
+            acc["noslip"] = (self._seg_mean(uvw_sq, wb["gid"], wb["ng"]) / wb["pg2"]).mean()
+        ib = self._bz.get("inlet")
+        if ib is not None:
+            u, v, w = self._uvw(ib["x"], ib["y"], ib["z"], ib["params"])
+            sq = (u - ib["tu"]) ** 2 + (v - ib["tv"]) ** 2 + (w - ib["tw"]) ** 2
+            acc["inlet"] = (self._seg_mean(sq, ib["gid"], ib["ng"]) / ib["pg2"]).mean()
+        ob = self._bz.get("outlet")
+        if ob is not None:
+            p = self.networks["p"](torch.cat([ob["x"], ob["y"], ob["z"], ob["params"]], dim=1)).view(-1, 1)
+            acc["outlet"] = self._seg_mean(p ** 2, ob["gid"], ob["ng"]).mean()
+        return acc
+
+    def _component_losses_reference(self) -> Dict[str, torch.Tensor]:
+        """Readable per-group reference (correctness oracle for the batched path;
+        NOT used in the hot loop). tests/test_batched_losses.py asserts equivalence."""
         dev = self.device
         acc = {c: torch.zeros((), device=dev) for c in COMPONENTS}
         n_vel = n_wall = 0
         for g in self.bundle.groups:
             t = g.tensors
-            # C1: with S1 the velocity nets emit u_s = q*s (s = vel_phase_gain), so
-            # EVERY velocity-derived loss (data, physics residual, WSS, no-slip,
-            # inlet) scales ~s**2 and must be divided by s**2 to give both phases an
-            # equal gradient budget. Dividing only the data loss (the earlier bug)
-            # left the diastolic PDE/BC constraints suppressed ~1/s**2..1/s**4.
-            # Pressure data + outlet BC are P_ref-scaled (not velocity-gained), so
-            # they are left unchanged. s=1 for systole -> systole identical.
             pg2 = self.normalizer.vel_phase_gain(g.phase) ** 2
             if "vx" in t:
                 acc["velocity"] = acc["velocity"] + data_velocity_loss(
@@ -287,17 +437,12 @@ class Trainer:
 
     # --------------------------------------------------------------- training
     def _physics_only(self) -> torch.Tensor:
-        dev = self.device
-        loss = torch.zeros((), device=dev)
-        n = 0
-        for g in self.bundle.groups:
-            t = g.tensors
-            if "cx" in t:
-                pl, _ = compute_physics_loss(
-                    self.networks, t["cx"], t["cy"], t["cz"], t["c_params"], self._Re)
-                loss = loss + pl / (self.normalizer.vel_phase_gain(g.phase) ** 2)   # C1
-                n += 1
-        return loss / max(n, 1)
+        # Batched physics over all groups' collocation (C1 pg2 per group). Matches the
+        # physics term of _component_losses; a fresh graph for the dedicated nut update.
+        c = self._bz.get("coll")
+        if c is None:
+            return torch.zeros((), device=self.device)
+        return self._physics_batched(c)
 
     def train_step(self) -> Dict[str, float]:
         aw = self.cfg.get("adaptive_weights", {})
