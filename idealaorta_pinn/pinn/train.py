@@ -446,13 +446,20 @@ class Trainer:
 
     def train_step(self) -> Dict[str, float]:
         aw = self.cfg.get("adaptive_weights", {})
-        if (aw.get("enabled", False) and self.epoch > 0
-                and self.epoch % int(aw.get("update_interval", 100)) == 0):
-            comp = self._component_losses()
-            self._update_adaptive_weights(comp)
+        do_update = (aw.get("enabled", False) and self.epoch > 0
+                     and self.epoch % int(aw.get("update_interval", 100)) == 0)
 
         self.opt.zero_grad(set_to_none=True)
+        # Compute the component losses ONCE and reuse the single graph for both the
+        # adaptive-weight update (per-component grad norms, retain_graph) and the
+        # weighted backward. The old code built a SECOND _component_losses graph on
+        # update epochs; with the batched (one big graph) losses the two graphs
+        # coexisting spiked memory ~2x and OOM'd at every update_interval. Reusing
+        # one graph is behaviorally identical (network weights are unchanged between
+        # the two forwards, so the losses are the same) and also saves a forward.
         comp = self._component_losses()
+        if do_update:
+            self._update_adaptive_weights(comp)   # retain_graph -> graph survives below
         weights = self._weights(comp)
         total = sum(weights[c] * comp[c] for c in COMPONENTS)
         total.backward()

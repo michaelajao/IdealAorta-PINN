@@ -6,7 +6,7 @@
 #   train: cases 1,2,3 (2.0 cm) + 7,8,9 (2.6 cm)   [diseased]
 #   held-out (validate): cases 4,5,6 (2.3 cm, all symmetries)
 # Architecture = final stack: S1 per-phase scaling + S2 volumetric collocation,
-# isotropic Fourier (S4 dropped). This arm: num_frequencies=12 (best velocity+peak in-sample; test if it generalizes better).
+# isotropic Fourier (S4 dropped). This arm: num_frequencies=12 (best velocity+peak in-sample).
 # Paired with stageB_richerloo_f12 (12 freq) to let the held-out result pick the
 # generalization-optimal bandwidth. Memory trimmed (6 train cases = 12 groups).
 
@@ -46,7 +46,7 @@ model:
 physics:
   mu: 0.0035
   rho: 1060.0
-  n_collocation: 600                     # per group; 12 groups -> ~7.2k interior pts (memory)
+  n_collocation: 500                     # per group (memory: peak fit incl adaptive-update spike)
 
 loss_weights:
   velocity: 1.0
@@ -75,7 +75,7 @@ training:
   early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
 
 loaders:
-  max_velocity_points: 4500             # per group; 12 groups -> ~54k total (fits 6-case budget)
+  max_velocity_points: 3000             # per group; 12 groups -> 36k total (memory)
   volumetric_collocation: true          # S2
   wall_normals_method: auto
   inlet_n_radial: 6
