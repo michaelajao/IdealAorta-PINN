@@ -75,10 +75,16 @@ class Trainer:
         self._build_optimizers()
 
         self.epoch = 0
+        self.start_epoch = 0
         self.best_loss = float("inf")
         self.no_improve = 0
         self.history: List[Dict] = []
         self.adaptive_weights: Dict[str, float] = {}
+        # Crash recovery: if config.resume and a resume_state.pt exists in out_dir,
+        # restore full training state (nets, both optimizers/schedulers, epoch,
+        # best/patience, adaptive weights, history, RNG) and continue. The data
+        # pipeline is seed-deterministic so the rebuilt normalizer/bundle match.
+        self._maybe_resume()
 
     # ------------------------------------------------------------------ data
     def _build_data(self) -> None:
@@ -339,9 +345,14 @@ class Trainer:
         min_delta = float(es.get("min_delta", 1e-6))
         es_enabled = bool(es.get("enabled", True))
 
-        print(f"[trainer] training {self.name} for {epochs} epochs on {self.device}")
+        if self.start_epoch >= epochs:
+            print(f"[trainer] resume target reached (start_epoch={self.start_epoch} "
+                  f">= epochs={epochs}); nothing to train.")
+            return
+        where = f" (resumed from {self.start_epoch})" if self.start_epoch else ""
+        print(f"[trainer] training {self.name} for {epochs} epochs on {self.device}{where}")
         t0 = time.time()
-        for epoch in range(1, epochs + 1):
+        for epoch in range(self.start_epoch + 1, epochs + 1):
             self.epoch = epoch
             losses = self.train_step()
             self.sched.step()
@@ -386,16 +397,81 @@ class Trainer:
 
             if epoch % save_interval == 0:
                 self._save_history()
+                self.save_resume_state()
             if es_enabled and self.no_improve >= patience:
                 print(f"[trainer] early stop at epoch {epoch} (monitor={monitor:.4f})")
                 break
 
         self._save_history()
         self.save_checkpoint("final_model.pt")
+        # Clean finish -> drop the resume sidecar so a later --resume starts fresh.
+        (self.out_dir / "resume_state.pt").unlink(missing_ok=True)
         mname = "holdout rel-L2" if self.holdout is not None else "unweighted loss sum"
         print(f"[trainer] done in {(time.time()-t0)/60:.1f} min. best {mname}={self.best_loss:.4f}")
         if self.holdout is not None:
             print(f"[trainer] final holdout velocity rel-L2 = {self._velocity_rel_l2(self.holdout):.4f}")
+
+    # --------------------------------------------------------- crash recovery
+    def save_resume_state(self) -> None:
+        """Write full training state for crash recovery (separate from the clean
+        inference checkpoints best_model.pt / final_model.pt). Written atomically
+        via a temp file + replace so a kill mid-write cannot corrupt it."""
+        state = {
+            "epoch": self.epoch,
+            "config": self.cfg,
+            "networks": {k: n.state_dict() for k, n in self.networks.items()},
+            "opt": self.opt.state_dict(),
+            "opt_nut": self.opt_nut.state_dict(),
+            "sched": self.sched.state_dict(),
+            "sched_nut": self.sched_nut.state_dict(),
+            "best_loss": self.best_loss,
+            "no_improve": self.no_improve,
+            "adaptive_weights": self.adaptive_weights,
+            "history": self.history,
+            "normalizer": self.normalizer.to_dict(),
+            "Re": self._Re,
+            "rng": {
+                "torch": torch.get_rng_state(),
+                "cuda": (torch.cuda.get_rng_state_all()
+                         if torch.cuda.is_available() else None),
+                "numpy": np.random.get_state(),
+            },
+        }
+        tmp = self.out_dir / "resume_state.pt.tmp"
+        torch.save(state, tmp)
+        tmp.replace(self.out_dir / "resume_state.pt")
+
+    def _maybe_resume(self) -> None:
+        if not bool(self.cfg.get("resume", False)):
+            return
+        path = self.out_dir / "resume_state.pt"
+        if not path.exists():
+            print(f"[trainer] resume requested but no {path.name}; starting fresh.")
+            return
+        state = torch.load(path, map_location=self.device, weights_only=False)
+        for k, n in self.networks.items():
+            n.load_state_dict(state["networks"][k])
+        self.opt.load_state_dict(state["opt"])
+        self.opt_nut.load_state_dict(state["opt_nut"])
+        self.sched.load_state_dict(state["sched"])
+        self.sched_nut.load_state_dict(state["sched_nut"])
+        self.best_loss = float(state["best_loss"])
+        self.no_improve = int(state["no_improve"])
+        self.adaptive_weights = dict(state.get("adaptive_weights", {}))
+        self.history = list(state.get("history", []))
+        self.start_epoch = int(state["epoch"])
+        rng = state.get("rng")
+        if rng:
+            try:
+                torch.set_rng_state(rng["torch"])
+                if rng.get("cuda") is not None and torch.cuda.is_available():
+                    torch.cuda.set_rng_state_all(rng["cuda"])
+                np.random.set_state(rng["numpy"])
+            except Exception as e:  # noqa: BLE001
+                print(f"[trainer] RNG restore skipped: {e}")
+        print(f"[trainer] RESUMED from epoch {self.start_epoch} "
+              f"(best={self.best_loss:.4f}, no_improve={self.no_improve}, "
+              f"{len(self.history)} history rows)")
 
     # ------------------------------------------------------------- checkpoint
     def save_checkpoint(self, filename: str) -> None:

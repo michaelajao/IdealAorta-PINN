@@ -73,6 +73,8 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=None, help="Override training.epochs.")
     ap.add_argument("--device", type=str, default="cuda")
     ap.add_argument("--skip-train", action="store_true", help="Reuse the existing checkpoint.")
+    ap.add_argument("--resume", action="store_true",
+                    help="Resume training from out_dir/resume_state.pt if present (crash recovery).")
     ap.add_argument("--cases", type=int, nargs="*", default=None,
                     help="Cases to validate/plot (default: the config's train_cases).")
     ap.add_argument("--phases", type=str, nargs="*", default=None)
@@ -93,6 +95,7 @@ def main() -> None:
     if args.epochs is not None:
         cfg.setdefault("training", {})["epochs"] = args.epochs
     cfg["device"] = args.device
+    cfg["resume"] = bool(args.resume)
     name = cfg["experiment"]["name"]
     out_dir = _resolve(cfg.get("output_dir", f"models/{name}"))
     fig_dir = FIGURES_DIR / name
@@ -103,7 +106,9 @@ def main() -> None:
     log_dir = LOGS_DIR / name
 
     archived = []
-    if not args.skip_train and not args.overwrite_output:
+    # On --resume we must NOT archive: the resume_state.pt sidecar lives in out_dir
+    # and archiving would move it away, defeating recovery.
+    if not args.skip_train and not args.overwrite_output and not args.resume:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         for path in (out_dir, fig_dir, paper_dir, inter_dir, metrics_dir, tables_dir, log_dir):
             dest = _archive_existing(path, stamp)
