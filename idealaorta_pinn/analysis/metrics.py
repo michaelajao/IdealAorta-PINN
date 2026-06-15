@@ -26,12 +26,32 @@ def _rel_l2(pred: np.ndarray, true: np.ndarray) -> float:
     return float(np.linalg.norm(pred - true) / (np.linalg.norm(true) + 1e-12))
 
 
-def recirculation_fraction(uvw: np.ndarray) -> float:
-    """Fraction of samples whose velocity opposes the dominant flow direction."""
-    mean_vec = uvw.mean(axis=0)
-    n = np.linalg.norm(mean_vec)
-    direction = mean_vec / n if n > 1e-12 else np.array([1.0, 0.0, 0.0])
-    return float(np.mean(uvw @ direction < 0.0))
+def _dominant_direction(uvw: np.ndarray) -> np.ndarray:
+    m = uvw.mean(axis=0)
+    n = np.linalg.norm(m)
+    return m / n if n > 1e-12 else np.array([1.0, 0.0, 0.0])
+
+
+def recirculation_fraction(uvw: np.ndarray, direction: Optional[np.ndarray] = None,
+                           speed_floor: float = 0.0) -> float:
+    """Fraction of samples whose velocity opposes the dominant flow ``direction``.
+
+    M4: two robustness fixes over the naive version.
+      * ``speed_floor`` excludes near-stagnant points (speed below the floor). In
+        diastole most of the slice is ~0, so the *sign* of those vectors is pure
+        noise; without a floor the recirculation fraction is noise-dominated and a
+        ~exact diastolic field reads as wildly different from CFD.
+      * ``direction`` is supplied (the CFD-derived axis) so the SAME reference is
+        used for both CFD and PINN, making the two fractions directly comparable;
+        a per-field mean direction would shift between them.
+    """
+    speed = np.linalg.norm(uvw, axis=1)
+    mask = speed > speed_floor
+    if not mask.any():
+        return 0.0
+    v = uvw[mask]
+    d = _dominant_direction(v) if direction is None else np.asarray(direction, float)
+    return float(np.mean(v @ d < 0.0))
 
 
 def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
@@ -71,8 +91,20 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
         "phase_u_ref": phase_u_ref,
         "vel_nrmse_phase": vel_nrmse_phase,
         "speed_nrmse_phase": speed_nrmse_phase,
-        "recirc_cfd": recirculation_fraction(true),
-        "recirc_pinn": recirculation_fraction(pred_v),
+        # M4: floor at 5% of the phase's own peak speed; reference direction from
+        # the CFD field's significant-speed points, shared by both fractions.
+        **_recirc_pair(true, pred_v, phase_u_ref),
+    }
+
+
+def _recirc_pair(true: np.ndarray, pred: np.ndarray, phase_u_ref: float) -> Dict[str, float]:
+    floor = 0.05 * phase_u_ref
+    true_speed = np.linalg.norm(true, axis=1)
+    sig = true[true_speed > floor]
+    direction = _dominant_direction(sig if len(sig) else true)
+    return {
+        "recirc_cfd": recirculation_fraction(true, direction, floor),
+        "recirc_pinn": recirculation_fraction(pred, direction, floor),
     }
 
 
