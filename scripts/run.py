@@ -157,7 +157,11 @@ def main() -> None:
 
     print(f"\n=== {name}: velocity vs CFD ({args.val_kind}) ===")
     for r in vel_rows:
-        print(f"  case {r['case']} {r['phase']:<9} rel-L2={r['vel_rel_l2']:.4f}  "
+        # Primary = per-PHASE NRMSE (normalized by this phase's own speed scale);
+        # the honest number for near-stagnant diastole. rel-L2 and the global-U_ref
+        # NRMSE remain in the CSV/JSON for reference.
+        print(f"  case {r['case']} {r['phase']:<9} "
+              f"nrmse_phase={r['vel_nrmse_phase']:.4f}  rel-L2={r['vel_rel_l2']:.4f}  "
               f"nrmse/Uref={r['vel_nrmse_uref']:.4f}  "
               f"recirc CFD/PINN={r['recirc_cfd']:.3f}/{r['recirc_pinn']:.3f}")
     for r in wss_rows:

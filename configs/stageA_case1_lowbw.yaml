@@ -1,0 +1,78 @@
+# Stage A in-sample (Case 1) — S1+S2, S4 OFF, LOW Fourier bandwidth (scale 0.5).
+# Architecture tuning: even with S4 dropped, the S4-off run still over-predicts the
+# centerline peak (sys 2.23 vs CFD 1.44) and shows residual texture. RANS-mean fields
+# are smooth, so the random-Fourier basis has more high-frequency bandwidth than the
+# target needs. Tancik (2020): the Fourier scale (std of B) sets the spectral bias.
+# This run halves fourier_scale (1.0 -> 0.5) to bias the basis toward smoother
+# functions. Compare peak over-prediction + NRMSE + WSS vs stageA_case1_s12.
+
+experiment:
+  name: stageA_case1_lowbw
+  description: "Stage A in-sample S1+S2, isotropic Fourier, fourier_scale=0.5 (low bandwidth)."
+
+random_seed: 42
+device: cuda
+output_dir: models/stageA_case1_lowbw
+
+loss_balance:
+  per_phase_velocity_scale: true        # S1
+
+data:
+  train_cases: [1]
+  phases: [systolic, diastolic]
+  velocity_kinds: [XY, XZ, "3D"]
+
+model:
+  hidden_dim: 128
+  num_layers: 5
+  num_frequencies: 24
+  fourier_scale: 0.5                    # TUNED: half bandwidth (was 1.0)
+  anisotropic_fourier: false            # S4 OFF
+  use_fourier: true
+  use_param_encoder: true
+  param_encoder_dims: [16, 16]
+  coord_encoder_dims: null
+  nut:
+    hidden_dim: 64
+    num_layers: 3
+    nu_t_min: 1.0e-3
+    initial_nut: 0.02
+    lr_multiplier: 10.0
+
+physics:
+  mu: 0.0035
+  rho: 1060.0
+  n_collocation: 4000
+
+loss_weights:
+  velocity: 1.0
+  physics: 0.05
+  pressure: 1.0
+  wss: 1.0
+  noslip: 10.0
+  inlet: 1.0
+  outlet: 1.0
+
+adaptive_weights:
+  enabled: true
+  update_interval: 250
+  alpha: 0.9
+  ref: velocity
+  weight_cap: 50.0
+  physics_floor: 0.05
+
+training:
+  epochs: 18000
+  lr: 1.0e-4
+  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  gradient_clip: 1.0
+  eval_interval: 250
+  save_interval: 1000
+  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
+
+loaders:
+  max_velocity_points: 40000
+  volumetric_collocation: true          # S2
+  wall_normals_method: auto
+  inlet_n_radial: 6
+  inlet_n_angular: 12
