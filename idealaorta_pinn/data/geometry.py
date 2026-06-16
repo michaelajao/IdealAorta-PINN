@@ -47,7 +47,16 @@ def estimate_normals_open3d(points: np.ndarray, radius_mult: float = 3.0,
     """Inward unit normals via Open3D (radius-hybrid + consistent orientation)."""
     if not _HAS_OPEN3D:
         return estimate_normals_pca(points)
-    import open3d as o3d  # type: ignore
+    try:
+        import open3d as o3d  # type: ignore
+    except Exception as e:  # noqa: BLE001
+        # open3d is installed but its import chain can break (it pulls in
+        # dash -> requests -> a half-compiled charset_normalizer). A findable
+        # module is not necessarily importable, so fall back to PCA normals.
+        import warnings
+        warnings.warn(f"open3d import failed ({type(e).__name__}); using PCA wall normals",
+                      RuntimeWarning)
+        return estimate_normals_pca(points)
 
     pts = np.asarray(points, dtype=np.float64)
     pcd = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
