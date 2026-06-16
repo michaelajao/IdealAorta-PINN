@@ -69,28 +69,27 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     def _vmax(v: np.ndarray) -> float:
         return float(np.percentile(v, 99)) or 1e-9
 
-    def _rng(v: np.ndarray) -> str:
-        return f"[{float(np.min(v)):.3g}, {float(np.max(v)):.3g}] m/s"
-
     # CFD ground truth sets the ceiling; PINN either shares it (comparable) or
     # uses its own (always legible). The CFD is never scaled by the PINN.
     cfd_vmax = _vmax(cfd_speed)
     pinn_vmax = cfd_vmax if shared_scale else _vmax(pinn_speed)
 
+    # Clean publication panels: named columns (CFD / Surrogate / Absolute error),
+    # no exposed [min,max] debug ranges in titles, and no baked-in suptitle -- the
+    # LaTeX figure caption supplies case geometry, phase, and disease state.
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
     for ax, vals, title, cmap, vm in (
         (axes[0], cfd_speed, "CFD", "turbo", cfd_vmax),
-        (axes[1], pinn_speed, "PINN", "turbo", pinn_vmax),
-        (axes[2], err, "|error|", "magma", _vmax(err)),
+        (axes[1], pinn_speed, "Surrogate", "turbo", pinn_vmax),
+        (axes[2], err, "Absolute error", "magma", _vmax(err)),
     ):
         sc = ax.scatter(ca, cb, c=vals, s=3, cmap=cmap, vmin=0, vmax=vm)
-        ax.set_title(f"{title}  {_rng(vals)}", fontsize=10)
-        ax.set_xlabel("xyz"[a] + " (m)")
-        ax.set_ylabel("xyz"[b] + " (m)")
+        ax.set_title(title, fontsize=13)
+        ax.set_xlabel("xyz"[a] + " (m)", fontsize=11)
+        ax.set_ylabel("xyz"[b] + " (m)", fontsize=11)
+        ax.tick_params(labelsize=9)
         ax.set_aspect("equal")
-        fig.colorbar(sc, ax=ax, shrink=0.8, label="m/s")
-    fig.suptitle(f"Case {case_id} ({rec.inlet_diameter_cm} cm, {rec.health}) — "
-                 f"{kind} plane, {phase}", fontsize=13)
+        fig.colorbar(sc, ax=ax, shrink=0.8, label="speed (m/s)")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"case{case_id:02d}_{phase}_{kind}_velocity.png"
