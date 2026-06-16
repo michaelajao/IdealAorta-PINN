@@ -18,7 +18,7 @@ from ..config import FIGURES_DIR, INTERACTIVE_DIR
 from ..data.cache import load_points
 from ..data.registry import CaseRecord, cases_by_id
 from .predict import TrainedModel, predict_physical
-from .streamlines import cfd_streamline_points, pinn_streamlines
+from .streamlines import cfd_streamline_points, pinn_speed_on_points, pinn_streamlines
 
 
 # ---------------------------------------------------------------------------
@@ -227,13 +227,17 @@ def _pyvista_line_arrays(poly):
 
 def comparison_figure(model: TrainedModel, records: Sequence[CaseRecord],
                       case_id: int, phase: str, marker_size: float = 2.0,
-                      grid_res: int = 60, n_seed: int = 240):
-    """Interactive 1x2 figure: CFD-traced streamlines vs PINN-traced streamlines.
+                      grid_res: int = 60, n_seed: int = 240, traced: bool = False):
+    """Interactive 1x2 figure: CFD streamlines vs the surrogate on the same lines.
 
-    Left = the CFD-exported streamlines; right = streamlines integrated through
-    the PINN velocity field (seeded identically at the inlet, masked to the
-    lumen). Both are drawn as faint trajectory lines with points coloured by
-    speed on a shared scale. Raises if PINN tracing yields no streamlines.
+    Both panels draw the CFD-exported streamline geometry; the left is coloured by
+    CFD speed and the right by the surrogate's predicted speed *sampled at the same
+    points* (``traced=False``, default). Colour mismatches localize where the
+    surrogate over/under-predicts along the true flow paths -- a robust comparison
+    that needs no integration. ``traced=True`` instead integrates streamlines
+    through the PINN field (pyvista, masked to the lumen); that path is fragile
+    because integrating an extrapolated/near-wall field can terminate the lines
+    early, so it is not the default. Speeds share one colour scale.
     """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -244,14 +248,25 @@ def comparison_figure(model: TrainedModel, records: Sequence[CaseRecord],
         raise ValueError(f"No 3D streamline data for case {case_id} {phase}")
     cfd_coords, cfd_speed = pts
 
-    poly = pinn_streamlines(model, records, case_id, phase, grid_res=grid_res, n_seed=n_seed)
-    if poly is None or poly.n_points == 0 or np.asarray(poly.lines).size == 0:
-        raise RuntimeError(
-            f"PINN streamline tracing produced no streamlines for case {case_id} {phase}. "
-            "Check pyvista availability and the trained field, or increase n_seed / grid_res.")
-    (plx, ply, plz), (pmx, pmy, pmz, pinn_speed) = _pyvista_line_arrays(poly)
-    pinn_pts = np.column_stack([pmx, pmy, pmz])
-    pinn_label = "PINN (traced)"
+    if traced:
+        poly = pinn_streamlines(model, records, case_id, phase, grid_res=grid_res, n_seed=n_seed)
+        if poly is None or poly.n_points == 0 or np.asarray(poly.lines).size == 0:
+            raise RuntimeError(
+                f"PINN streamline tracing produced no streamlines for case {case_id} {phase}. "
+                "Check pyvista availability and the trained field, or increase n_seed / grid_res.")
+        (plx, ply, plz), (pmx, pmy, pmz, pinn_speed) = _pyvista_line_arrays(poly)
+        pinn_lines = (plx, ply, plz)
+        pinn_markers = (pmx, pmy, pmz)
+        pinn_pts = np.column_stack([pmx, pmy, pmz])
+        pinn_label = "Surrogate (traced)"
+    else:
+        # Robust: the surrogate field sampled on the CFD streamline geometry.
+        pinn_speed = pinn_speed_on_points(model, cfd_coords, rec, phase)
+        clx2, cly2, clz2 = _ordered_line_arrays(cfd_coords)
+        pinn_lines = (clx2, cly2, clz2)
+        pinn_markers = (cfd_coords[:, 0], cfd_coords[:, 1], cfd_coords[:, 2])
+        pinn_pts = cfd_coords
+        pinn_label = "Surrogate (on CFD streamlines)"
 
     cmax = float(np.percentile(np.concatenate([cfd_speed, pinn_speed]), 99))
     rng = _equal_aspect_ranges(np.vstack([cfd_coords, pinn_pts]))
@@ -274,7 +289,7 @@ def comparison_figure(model: TrainedModel, records: Sequence[CaseRecord],
 
     add_panel(1, (clx, cly, clz), (cfd_coords[:, 0], cfd_coords[:, 1], cfd_coords[:, 2]),
               cfd_speed, 0.46)
-    add_panel(2, (plx, ply, plz), (pmx, pmy, pmz), pinn_speed, 1.01)
+    add_panel(2, pinn_lines, pinn_markers, pinn_speed, 1.01)
 
     for i in (1, 2):
         scene = "scene" if i == 1 else f"scene{i}"
