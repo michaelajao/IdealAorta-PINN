@@ -185,9 +185,15 @@ def main() -> None:
                                                          shared_scale=True, out_dir=fig_dir))
                     except Exception as e:  # noqa: BLE001
                         print(f"  [figure] skip {kind} velocity case {cid} {ph}: {e}")
-                # WSS map, wall pressure, transverse bulge profile, axial profile
-                for label, fn in (("wss-map", wss_map), ("wall-pressure", wall_pressure_map),
-                                  ("bulge-profile", velocity_profile),
+                # WSS + wall-pressure maps in BOTH projection planes (XY/XZ)
+                for kind in ("XY", "XZ"):
+                    for label, fn in (("wss-map", wss_map), ("wall-pressure", wall_pressure_map)):
+                        try:
+                            produced.append(fn(model, records, cid, ph, kind=kind, out_dir=fig_dir))
+                        except Exception as e:  # noqa: BLE001
+                            print(f"  [figure] skip {kind} {label} case {cid} {ph}: {e}")
+                # transverse bulge profile, axial profile
+                for label, fn in (("bulge-profile", velocity_profile),
                                   ("axial-profile", axial_velocity_profile)):
                     try:
                         produced.append(fn(model, records, cid, ph, out_dir=fig_dir))

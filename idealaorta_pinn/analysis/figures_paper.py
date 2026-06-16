@@ -26,9 +26,15 @@ from .predict import TrainedModel, predict_physical
 SLICES_CSV = PROJECT_ROOT / "data" / "results_on_slices.csv"
 
 
-def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes, suptitle,
-                 unit, out_path: Path, diverging=False, vmin=0.0):
-    """CFD | PINN | |error| scatter maps on a projected plane; shared CFD scale."""
+_KIND_AXES = {"XY": (0, 1), "XZ": (0, 2), "YZ": (1, 2)}
+
+
+def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes,
+                 unit, out_path: Path, axis_labels=("", ""), diverging=False, vmin=0.0):
+    """CFD | Surrogate | Absolute-error scatter maps on a projected plane.
+
+    Clean publication panels (named columns, no exposed [min,max] debug ranges,
+    no baked-in suptitle -- the LaTeX caption supplies case/phase/disease state)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -37,11 +43,12 @@ def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes, suptitle,
     for ax, vals, title, cmap, vm in zip(axes, (cfd, pinn, err), titles, cmaps, vmaxes):
         lo = -vm if diverging else vmin
         sc = ax.scatter(ca, cb, c=vals, s=4, cmap=cmap, vmin=lo, vmax=vm)
-        ax.set_title(f"{title}  [{float(np.min(vals)):.3g}, {float(np.max(vals)):.3g}] {unit}",
-                     fontsize=10)
+        ax.set_title(title, fontsize=13)
+        ax.set_xlabel(axis_labels[0], fontsize=11)
+        ax.set_ylabel(axis_labels[1], fontsize=11)
+        ax.tick_params(labelsize=9)
         ax.set_aspect("equal")
         fig.colorbar(sc, ax=ax, shrink=0.8, label=unit)
-    fig.suptitle(suptitle, fontsize=13)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=300)
     plt.close(fig)
@@ -49,8 +56,10 @@ def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes, suptitle,
 
 
 def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, phase: str,
-            max_points: int = 20_000, out_dir: Path = FIGURES_DIR) -> Path:
-    """CFD | PINN | |error| wall-shear-stress magnitude (Pa) on the wall point cloud."""
+            kind: str = "XZ", max_points: int = 20_000, out_dir: Path = FIGURES_DIR) -> Path:
+    """CFD | Surrogate | error wall-shear-stress magnitude (Pa), wall points
+    projected onto the ``kind`` plane (``XY`` looks down the vessel; ``XZ`` is the
+    long-axis side view)."""
     rec = cases_by_id(records)[case_id]
     df = load_points(rec, "WSS", phase)
     if df is None or "wss" not in df.columns:
@@ -64,20 +73,21 @@ def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, ph
     pinn = predict_wss_physical(model, coords, normals, rec.inlet_diameter_cm,
                                 rec.disease_flag, phase, beta=beta)["wss_magnitude"]
     err = np.abs(pinn - cfd)
-    a, b = _plane_axes(coords)
+    a, b = _KIND_AXES[kind]
     vm = float(np.percentile(cfd, 99)) or 1e-9
     return _three_panel(
         coords[:, a], coords[:, b], cfd, pinn, err,
-        titles=("CFD WSS", "PINN WSS", "|error|"),
+        titles=("CFD WSS", "Surrogate WSS", "Absolute error"),
         cmaps=("inferno", "inferno", "magma"),
         vmaxes=(vm, vm, float(np.percentile(err, 99)) or 1e-9),
-        suptitle=f"Case {case_id} ({rec.inlet_diameter_cm} cm, {rec.health}) — wall shear stress, {phase}",
-        unit="Pa", out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_wss_map.png"))
+        unit="Pa", axis_labels=("xyz"[a] + " (m)", "xyz"[b] + " (m)"),
+        out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_{kind}_wss_map.png"))
 
 
 def wall_pressure_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
-                      phase: str, max_points: int = 20_000, out_dir: Path = FIGURES_DIR) -> Path:
-    """CFD | PINN | |error| wall pressure on the wall point cloud.
+                      phase: str, kind: str = "XZ", max_points: int = 20_000,
+                      out_dir: Path = FIGURES_DIR) -> Path:
+    """CFD | Surrogate | error wall pressure, wall points projected onto ``kind``.
 
     Pressure is a gauge field (defined up to a constant), so both fields are
     mean-subtracted to compare *spatial structure* on a symmetric diverging scale.
@@ -95,16 +105,15 @@ def wall_pressure_map(model: TrainedModel, records: Sequence[CaseRecord], case_i
                             phase, beta=beta)["p"]
     cfd0, pinn0 = cfd - cfd.mean(), pinn - pinn.mean()       # gauge-align
     err = np.abs(pinn0 - cfd0)
-    a, b = _plane_axes(coords)
+    a, b = _KIND_AXES[kind]
     vm = float(np.percentile(np.abs(cfd0), 99)) or 1e-9
     return _three_panel(
         coords[:, a], coords[:, b], cfd0, pinn0, err,
-        titles=("CFD p - mean", "PINN p - mean", "|error|"),
+        titles=("CFD pressure", "Surrogate pressure", "Absolute error"),
         cmaps=("RdBu_r", "RdBu_r", "magma"),
         vmaxes=(vm, vm, float(np.percentile(err, 99)) or 1e-9),
-        suptitle=f"Case {case_id} ({rec.inlet_diameter_cm} cm, {rec.health}) — wall pressure (gauge), {phase}",
-        unit="Pa", diverging=True,
-        out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_pressure_map.png"))
+        unit="Pa", diverging=True, axis_labels=("xyz"[a] + " (m)", "xyz"[b] + " (m)"),
+        out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_{kind}_pressure_map.png"))
 
 
 def velocity_profile(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
