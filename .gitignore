@@ -49,3 +49,13 @@ Thumbs.db
 .vscode/
 .idea/
 CLAUDE.md
+
+# LaTeX build artifacts (preview wrapper; sources are tracked)
+paper/_preview.pdf
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
