@@ -44,8 +44,15 @@ def _load_velocity_points(rec: CaseRecord, phase: str,
         df = load_points(rec, kind, phase)
         if df is None or not {"u", "v", "w"}.issubset(df.columns):
             continue
+        uvw = df[["u", "v", "w"]].to_numpy(np.float64)
+        # Skip a degenerate slice: some CFD plane exports carry no resolved flow
+        # (e.g. Case 3 systolic XY/XZ are all-zero). Supervising velocity toward
+        # those zeros corrupts the fit, so drop the slice (its 3D export is used).
+        if float(np.abs(uvw).max()) < 1e-8:
+            print(f"[loaders] skip zero-velocity slice: case {rec.case_id} {phase} {kind}")
+            continue
         coords_parts.append(df[["x", "y", "z"]].to_numpy(np.float64))
-        vel_parts.append(df[["u", "v", "w"]].to_numpy(np.float64))
+        vel_parts.append(uvw)
     if not coords_parts:
         return None
     coords = np.vstack(coords_parts)

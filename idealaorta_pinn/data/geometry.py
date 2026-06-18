@@ -14,6 +14,7 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 _HAS_OPEN3D = importlib.util.find_spec("open3d") is not None
+_OPEN3D_WARNED = False
 
 
 def estimate_normals_pca(points: np.ndarray, k: int = 16) -> np.ndarray:
@@ -53,9 +54,13 @@ def estimate_normals_open3d(points: np.ndarray, radius_mult: float = 3.0,
         # open3d is installed but its import chain can break (it pulls in
         # dash -> requests -> a half-compiled charset_normalizer). A findable
         # module is not necessarily importable, so fall back to PCA normals.
-        import warnings
-        warnings.warn(f"open3d import failed ({type(e).__name__}); using PCA wall normals",
-                      RuntimeWarning)
+        # Warn only once -- this is called per (case, phase) and would spam logs.
+        global _OPEN3D_WARNED
+        if not _OPEN3D_WARNED:
+            import warnings
+            warnings.warn(f"open3d import failed ({type(e).__name__}); using PCA wall normals "
+                          "(this message is shown once)", RuntimeWarning)
+            _OPEN3D_WARNED = True
         return estimate_normals_pca(points)
 
     pts = np.asarray(points, dtype=np.float64)

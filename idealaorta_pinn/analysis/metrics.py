@@ -79,13 +79,23 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
     # of the phase's true speed) instead of the global (systolic-scale) U_ref. The
     # global-U_ref NRMSE hides diastolic collapse (a 12x over-prediction reads as a
     # benign few-percent); the per-phase NRMSE exposes it. This is the honest metric.
-    phase_u_ref = max(float(np.quantile(true_speed, 0.995)), 1e-6)
-    vel_nrmse_phase = float(np.sqrt(np.mean((pred_v - true) ** 2)) / phase_u_ref)
-    speed_nrmse_phase = float(np.sqrt(np.mean((pred["speed"] - true_speed) ** 2)) / phase_u_ref)
+    # Guard against a degenerate slice: some CFD plane exports carry no resolved
+    # flow (e.g. Case 3 systolic XY/XZ are all-zero). There the phase scale collapses
+    # to the floor and per-phase NRMSE / rel-L2 explode to meaningless ~1e6 values.
+    # Detect it and report NaN for the phase-normalized metrics rather than a number
+    # that would wreck any aggregate, while keeping the U_ref-normalized metric.
+    q995 = float(np.quantile(true_speed, 0.995))
+    degenerate = q995 < 1e-4          # no resolved flow on this slice
+    phase_u_ref = max(q995, 1e-6)
+    nan = float("nan")
+    vel_nrmse_phase = nan if degenerate else float(np.sqrt(np.mean((pred_v - true) ** 2)) / phase_u_ref)
+    speed_nrmse_phase = nan if degenerate else float(
+        np.sqrt(np.mean((pred["speed"] - true_speed) ** 2)) / phase_u_ref)
     return {
         "case": case_id, "phase": phase, "kind": kind, "n_points": int(len(df)),
-        "vel_rel_l2": _rel_l2(pred_v, true),
-        "speed_rel_l2": _rel_l2(pred["speed"], true_speed),
+        "degenerate_slice": bool(degenerate),
+        "vel_rel_l2": nan if degenerate else _rel_l2(pred_v, true),
+        "speed_rel_l2": nan if degenerate else _rel_l2(pred["speed"], true_speed),
         "vel_nrmse_uref": vel_nrmse_uref,
         "speed_nrmse_uref": speed_nrmse_uref,
         "phase_u_ref": phase_u_ref,
