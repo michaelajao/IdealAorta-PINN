@@ -39,7 +39,9 @@ include = ["idealaorta_pinn*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+# -p no:dash: the installed dash pytest plugin imports requests -> a half-compiled
+# charset_normalizer in this env, breaking collection; we don't use dash in tests.
+addopts = "-q -p no:dash"
 
 [tool.ruff]
 line-length = 100
