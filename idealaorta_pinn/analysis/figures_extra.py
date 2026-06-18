@@ -252,6 +252,57 @@ def error_summary_bars(metrics: Dict[str, Dict], case_id: int,
     return out
 
 
+def error_vs_diameter(folds: Dict[float, str], insample_exp: str,
+                      out_dir: Path = FIGURES_DIR, metrics_dir: Path = None) -> Path:
+    """Held-out error vs inlet diameter across the k-fold (one fold per diameter).
+
+    ``folds`` maps held-out diameter (cm) -> experiment name whose
+    report/metrics/<exp>/{velocity,wss}.json hold that fold's held-out cases.
+    Plots per-case velocity NRMSE and WSS rel-L2 against diameter with the
+    per-diameter mean, against the in-sample floor. Degenerate (NaN) slices are
+    dropped. The middle diameter is interpolation; the ends are extrapolation."""
+    import json
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from ..config import METRICS_DIR
+    md = Path(metrics_dir) if metrics_dir else METRICS_DIR
+
+    def _load(exp, kind, key):
+        rows = json.loads((md / exp / f"{kind}.json").read_text())
+        return [(r["case"], r["phase"], r[key]) for r in rows
+                if isinstance(r.get(key), (int, float)) and r[key] == r[key]]
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.4, 4.2), constrained_layout=True)
+    for ax, kind, key, ylab, title in (
+            (axes[0], "velocity", "vel_nrmse_phase", "velocity NRMSE", "Velocity"),
+            (axes[1], "wss", "wss_rel_l2", "WSS rel-$L_2$", "Wall shear stress")):
+        ds = sorted(folds)
+        means = []
+        for d in ds:
+            vals = [v for _, _, v in _load(folds[d], kind, key)]
+            ax.scatter([d] * len(vals), vals, s=22, color="#2c6e9c", alpha=0.6, zorder=3)
+            means.append(float(np.mean(vals)) if vals else np.nan)
+        ax.plot(ds, means, "-o", color="#b4451f", lw=2, zorder=4, label="per-diameter mean")
+        floor = [_load(insample_exp, kind, key)]
+        fval = float(np.mean([v for _, _, v in floor[0]])) if floor[0] else np.nan
+        ax.axhline(fval, ls="--", color="gray", lw=1, label=f"in-sample floor ({fval:.2f})")
+        ax.set_xticks(ds)
+        ax.set_xlabel("held-out inlet diameter (cm)", fontsize=11)
+        ax.set_ylabel(ylab, fontsize=11)
+        ax.set_title(title, fontsize=12)
+        ax.set_ylim(bottom=0)
+        ax.legend(fontsize=9, loc="upper left")
+    fig.suptitle("Leave-one-diameter-out generalization (each fold trains on the other two diameters)",
+                 fontsize=12)
+    out = Path(out_dir) / "error_vs_diameter.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=200)
+    plt.close(fig)
+    return out
+
+
 def physics_residual_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
                          phase: str, kind: str = "XZ", out_dir: Path = FIGURES_DIR,
                          max_points: int = 12_000) -> Path:
