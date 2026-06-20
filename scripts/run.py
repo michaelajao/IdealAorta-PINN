@@ -7,7 +7,7 @@ leave-one-diameter-out case in Stage B).
 
 Usage:
     python scripts/run.py --config configs/stageA_case1.yaml
-    python scripts/run.py --config configs/stageB_loo_2p3.yaml --cases 4
+    python scripts/run.py --config configs/stageB_richerloo_f16.yaml --cases 4 5 6
     python scripts/run.py --config configs/stageA_case1.yaml --skip-train --no-interactive
 """
 

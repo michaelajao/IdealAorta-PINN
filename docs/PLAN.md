@@ -17,7 +17,7 @@ _Last updated after Stage A (single-case de-risk) completed._
 - [x] **Correction:** all 12 cases have complete systolic + diastolic 3D/plane/WSS data (the "missing systolic" was a phase-typo regex artifact, fixed).
 - [x] Consolidated package: `config.py` + `data/` + `pinn/` + `analysis/`; **2 scripts** `prepare.py`, `run.py`.
 - [x] Tests: 9 passing (parser, registry, physics residual).
-- [x] Configs: `stageA_case1`, `stageB_loo_2p3`, `stageC_full`, `stageC_hpc` (48 GB).
+- [x] Configs: `stageA_case1` (+ ablations), `stageB_richerloo_f16` & `stageB_kfold_hold2p{0,6}` (LODO k-fold), `stageC_full`, `stageC_hpc` (48 GB).
 - [x] Output layout: `models/`, `report/{figures,metrics,interactive}`, `paper/` (LaTeX + `references.bib`); paths anchored to project root.
 - [x] Interactive figure = **CFD-traced vs PINN-traced** streamlines (lumen-masked integration), no fallback.
 - [x] Trainer model-selection / early-stop on a **stable monitor** (held-out rel-L2 if a holdout exists, else unweighted component-loss sum).
@@ -91,8 +91,8 @@ python scripts/prepare.py all                 # migrate --apply + registry + cac
 #           add XZ back to velocity_kinds). Verify low in-sample rel-L2 + falling residual.
 python scripts/run.py --config configs/stageA_case1.yaml
 
-# Stage B — leave-one-diameter-out: train on 2.0 + 2.6 cm, predict unseen 2.3 cm (Case 4)
-python scripts/run.py --config configs/stageB_loo_2p3.yaml --cases 4
+# Stage B — leave-one-diameter-out: train on 2.0 + 2.6 cm, predict unseen 2.3 cm (Cases 4-6)
+python scripts/run.py --config configs/stageB_richerloo_f16.yaml --cases 4 5 6
 
 # Stage C — full study (all 12), 48 GB-scaled (brosnan; use tmux)
 python scripts/run.py --config configs/stageC_hpc.yaml

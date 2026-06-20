@@ -70,7 +70,7 @@ $py = "C:\Users\ajaoo\miniconda3\envs\idealaorta-pinn\python.exe"
 
 # 2) train + validate + figures (one workflow, since they share the model)
 & $py scripts/run.py --config configs/stageA_case1.yaml                 # Stage A de-risk (Case 1)
-& $py scripts/run.py --config configs/stageB_loo_2p3.yaml --cases 4     # Stage B: predict unseen 2.3 cm
+& $py scripts/run.py --config configs/stageB_richerloo_f16.yaml --cases 4 5 6  # Stage B: predict unseen 2.3 cm (LODO)
 & $py scripts/run.py --config configs/stageA_case1.yaml --skip-train    # re-validate/plot an existing model
 ```
 
