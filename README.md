@@ -32,7 +32,7 @@ leave-one-diameter-out validation.
 ```
 idealaorta_pinn/            # the Python package
   config.py                 # paths, YAML loaders, physical constants + inlet waveform
-  data/                     # CFX parser, case registry, parquet cache, geometry, dataset assembly
+  data/                     # CFD-Post parser, case registry, parquet cache, geometry, dataset assembly
   pinn/                     # model (P2INN), physics residual, losses + BCs, trainer
   analysis/                 # inference, validation metrics + WSS, streamlines, figures
 configs/                    # YAML: constants, case metadata, per-stage experiments
@@ -65,7 +65,7 @@ $py = "C:\Users\ajaoo\miniconda3\envs\idealaorta-pinn\python.exe"
 & $py scripts/prepare.py migrate            # dry-run preview of the move into data/raw
 & $py scripts/prepare.py migrate --apply    # move the 12 case folders (+ xlsx) into data/raw
 & $py scripts/prepare.py registry           # discover cases -> data/registry.json
-& $py scripts/prepare.py cache              # parse CFX CSVs -> data/processed/*.parquet
+& $py scripts/prepare.py cache              # parse CFD-Post CSVs -> data/processed/*.parquet
 #    (or: scripts/prepare.py all  -- migrate --apply, registry, cache in one go)
 
 # 2) train + validate + figures (one workflow, since they share the model)

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..config import RAW_DIR, REGISTRY_PATH, load_cases, load_constants
-from .cfx import detect_data_kind, normalize_phase, parse_time_seconds
+from .cfdpost import detect_data_kind, normalize_phase, parse_time_seconds
 
 _CASE_ID_RE = re.compile(r"case\s+(\d+)", re.IGNORECASE)
 _DIAMETER_RE = re.compile(r"(\d+(?:\.\d+)?)\s*c?m?\s*inlet", re.IGNORECASE)

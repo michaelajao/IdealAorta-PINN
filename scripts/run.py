@@ -87,8 +87,6 @@ def main() -> None:
                     help="Do not mirror stdout/stderr to report/logs/<experiment>/run.log.")
     ap.add_argument("--overwrite-output", action="store_true",
                     help="Overwrite existing experiment outputs instead of archiving them before training.")
-    ap.add_argument("--paper-reference-table", action="store_true",
-                    help="Write cleaned results_on_slices.csv reference table.")
     args = ap.parse_args()
 
     cfg = load_yaml(args.config)
@@ -215,14 +213,6 @@ def main() -> None:
         # tracked paper figures stay a hand-picked, stable set.
         print(f"[figures] wrote {len(produced)} figure(s) to report/figures/{name} "
               f"(curate final ones into paper/figures/ by hand)")
-
-        if args.paper_reference_table:
-            from idealaorta_pinn.analysis.figures_paper import slice_reference_table
-            try:
-                t = slice_reference_table(out_dir=tables_dir)
-                print(f"[figures] wrote {t.relative_to(PROJECT_ROOT)}")
-            except Exception as e:  # noqa: BLE001
-                print(f"  [paper-reference-table] skipped: {e}")
 
     # ---- interactive ----
     if not args.no_interactive:

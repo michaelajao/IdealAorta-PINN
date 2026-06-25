@@ -7,8 +7,8 @@ the peak ratio (1.0 = perfect; >1 = over-prediction). Read-only; loads each
 best_model.pt and predicts on the CFD slice.
 
 Usage:
-    python scripts/peak_probe.py --experiments stageA_case1_s12 stageA_case1_f12 \
-        stageA_case1_lowbw stageA_case1_s124 --case 1 --kind XZ --device cuda
+    python scripts/peak_probe.py --experiments stageA_case1_s12 --case 1 --kind XZ --device cuda
+    python scripts/peak_probe.py --experiments stageB_richerloo_f16 --case 4 --kind XZ --device cuda
 """
 
 from __future__ import annotations

@@ -266,23 +266,15 @@ monitor). Vector PDF only.
 
 ---
 
-## 7. Table list
+## 7. Tables
 
-| ID | Title | Source | Generator | Status |
-|---|---|---|---|---|
-| T1 | Dataset / case inventory (12) | `registry.json` × `cases.yaml` | NEW `make_dataset_table.py` | new |
-| T2 | Non-dim scales per training set | `models/<exp>/normalizer.json` | NEW `make_scales_table.py` | new (1 completed run per train-set) |
-| T3 | Network + training hyperparameters | stage YAMLs | hand `.tex` (note 5L/24f vs 6L/16f) | new |
-| T4 | In-sample orthogonal ablation (Case 1) | Block-1 JSONs | `make_ablation_table.py --latex` | needs Block-1 runs |
-| T4-supp | Bandwidth study (16/12/low-bw, at LODO arch) | `_f12`/`_f16` + Case-1 sweep | same gen, separate `--out` | extend |
-| T5 | LODO k-fold generalization | Block-3 JSONs | `make_ablation_table.py --summary mean` + fold/symmetry labels | needs 2 new folds; keep "leave-2.3-out" titling until all land |
-| T6 | Seed-sweep robustness (mean ± std, n) | seed-keyed JSONs | NEW `make_seed_table.py` | needs seed runs |
-| T7 | Comparator table (which loss terms kept) | Block-4 JSONs + baseline | `make_ablation_table.py` + manual rows | needs Block 4 |
-
-**Three prose numbers to reconcile:** "4.9% diastolic" is **S1+S2** (not S1-alone =
-3.9%); `+S1` diastolic WSS regresses (0.112 vs baseline 0.076) → footnote that S1 targets
-velocity/recirc, S2 targets WSS; the 0.28/0.38 headline is the **2.3-fold only** → keep
-"leave-2.3-out" titling.
+All paper tables are authored **inline in LaTeX** in `paper/Presentation/main.tex`
+(no generator scripts): the case-inventory and slice-diameter tables, the in-sample
+reconstruction table (`tab:pinn_insample`, Case 1), and the leave-2.3-cm-out table
+(`tab:pinn_loo`). The earlier `make_*_table.py` generators and the multi-row
+in-sample ablation / seed / scales tables were dropped when the manuscript moved to
+the corrected 3D-only protocol — the metrics behind the inline tables come straight
+from `report/metrics/<exp>/{velocity,wss}.csv`.
 
 **Also required (cheap, high-credibility):** strengthened **leakage-audit test** (assert
 `fit_normalizer` bit-identical with/without held case in `records`, `build_bundle` emits

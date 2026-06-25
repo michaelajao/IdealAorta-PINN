@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from ..config import PROCESSED_DIR
-from .cfx import read_cfx_export_csv
+from .cfdpost import read_cfdpost_csv
 from .registry import CaseRecord
 
 # Plane files are dense; decimate when caching for visualization.
@@ -54,7 +54,7 @@ def cache_one(record: CaseRecord, kind: str, phase: str,
     if pq.exists() and not overwrite:
         return pq
 
-    df = read_cfx_export_csv(src, canonical=True)
+    df = read_cfdpost_csv(src, canonical=True)
     df.to_parquet(pq, index=False)
 
     if kind in _PLANE_KINDS:

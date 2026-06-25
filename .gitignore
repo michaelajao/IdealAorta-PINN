@@ -59,3 +59,4 @@ paper/*.blg
 paper/*.out
 paper/*.fls
 paper/*.fdb_latexmk
+.gitignore

@@ -1,7 +1,11 @@
-"""Robust parser for ANSYS CFX CSV exports.
+"""Robust parser for ANSYS CFD-Post CSV exports.
 
-CFX export format
------------------
+CFD-Post is ANSYS's unified post-processor; it reads both CFX and Fluent solver
+results, so this export format is solver-agnostic (the present dataset was
+post-processed in CFD-Post regardless of the underlying solver).
+
+CFD-Post export format
+----------------------
 A short metadata block, then a line ``[Data]``, then a single header row of
 comma-separated column names, then comma-separated numeric rows::
 
@@ -61,7 +65,7 @@ def _canonical_name(raw: str) -> Optional[str]:
 
 
 def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename raw CFX columns to canonical names; drop unrecognized columns."""
+    """Rename raw CFD-Post columns to canonical names; drop unrecognized columns."""
     rename: Dict[str, str] = {}
     for col in df.columns:
         canon = _canonical_name(str(col))
@@ -72,8 +76,8 @@ def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return out[keep]
 
 
-def read_cfx_export_csv(path: str | Path, canonical: bool = True) -> pd.DataFrame:
-    """Parse a CFX-exported CSV into a numeric DataFrame.
+def read_cfdpost_csv(path: str | Path, canonical: bool = True) -> pd.DataFrame:
+    """Parse a CFD-Post-exported CSV into a numeric DataFrame.
 
     Args:
         path: CSV file path.
@@ -125,7 +129,7 @@ _DATA_KIND_PATTERNS: List[tuple[str, str]] = [
 
 
 def detect_data_kind(name: str) -> str:
-    """Classify a CFX file by its name: '3D', 'XY', 'XZ', 'WSS' or 'unknown'."""
+    """Classify a CFD-Post export by its filename: '3D', 'XY', 'XZ', 'WSS' or 'unknown'."""
     low = name.lower()
     for kind, pat in _DATA_KIND_PATTERNS:
         if re.search(pat, low):

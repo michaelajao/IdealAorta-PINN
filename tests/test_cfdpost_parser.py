@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from idealaorta_pinn.data.cfx import (
+from idealaorta_pinn.data.cfdpost import (
     detect_data_kind,
     normalize_phase,
     parse_time_seconds,
-    read_cfx_export_csv,
+    read_cfdpost_csv,
 )
 from idealaorta_pinn.data.registry import discover_cases
 
@@ -37,7 +37,7 @@ def test_parse_real_case1_3d(raw_dir):
     case1 = next(r for r in records if r.case_id == 1)
     path = case1.get_file("3D", "systolic")
     assert path is not None and path.exists()
-    df = read_cfx_export_csv(path, canonical=True)
+    df = read_cfdpost_csv(path, canonical=True)
     assert {"x", "y", "z", "u", "v", "w", "speed"}.issubset(df.columns)
     assert len(df) > 1000
     # velocity magnitude should be physically plausible (m/s)

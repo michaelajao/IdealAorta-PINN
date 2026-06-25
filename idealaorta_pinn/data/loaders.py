@@ -8,7 +8,7 @@ For each ``(case, phase)`` snapshot this builds standardized tensors for:
     fluid samples) for the PDE residual,
   * inlet/outlet cross-section points for the soft BCs.
 
-Every point carries the per-case parameter vector ``mu = [d_inlet*, disease, phase]``.
+Every point carries the per-case parameter vector ``mu = [d_inlet*, beta, disease, phase]``.
 The global :class:`Normalizer` is fit on the TRAIN cases only and reused for any
 held-out case (no leakage in leave-one-diameter-out).
 """
