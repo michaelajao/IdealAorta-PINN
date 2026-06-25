@@ -126,8 +126,8 @@ Pass `--overwrite-output` only when you intentionally want to replace outputs in
   turbulent-viscosity network `ν_t(x; p)` (softplus-positive). Dual AdamW optimizers (`ν_t` at 10× LR).
 - **Physics:** steady RANS-mean momentum + continuity residual with effective viscosity
   `ν_eff = ν_mol + ν_t`, evaluated by autograd in standardized coordinates (quasi-steady per phase).
-- **Data fit:** dense XY/XZ plane velocities + sparse 3D streamline velocities + wall pressure/WSS;
-  WSS computed from the velocity gradient at the wall.
+- **Data fit:** 3D CFD streamline velocity samples + wall pressure/WSS; XY/XZ plane exports are
+  reserved for validation and figures. WSS is computed from the velocity gradient at the wall.
 - **Loss balancing:** gradient-norm adaptive weighting (Wang et al. 2021) with EMA.
 - **Validation:** leave-one-diameter-out vs CFD (relative L2 on velocity, U_ref-normalized NRMSE,
   WSS error, and recirculation). Reference slice CSVs are kept as tables, not plotted as xlsx

@@ -1,45 +1,39 @@
-# Stage A — single-case IN-SAMPLE reconstruction de-risk (Case 1, 2.0 cm axisym. diseased).
-# Train on ALL of Case 1's data (XY + XZ + 3D velocity, + wall pressure/WSS) and verify
-# the field reconstructs well and the physics residual falls. No orthogonal plane is held
-# out (that was under-determined and triggered premature early stopping). With no holdout,
-# model selection / early stopping use the stationary unweighted component-loss sum.
-# Train to convergence (PINNs need many iterations) — best run on a large GPU (brosnan).
-
 experiment:
   name: stageA_case1
-  description: "Single-case in-sample reconstruction (Case 1, all planes); train to convergence."
-
+  description: Single-case reconstruction from 3D velocity supervision; XY/XZ are validation/figure slices.
 random_seed: 42
 device: cuda
 output_dir: models/stageA_case1
-
 data:
-  train_cases: [1]
-  phases: [systolic, diastolic]
-  velocity_kinds: [XY, XZ, "3D"]     # in-sample: use all velocity sources
-
+  train_cases:
+  - 1
+  phases:
+  - systolic
+  - diastolic
+  velocity_kinds:
+  - 3D
 model:
   hidden_dim: 128
   num_layers: 5
-  num_frequencies: 24                # more frequencies for sharp near-wall structure
+  num_frequencies: 24
   fourier_scale: 1.0
   use_fourier: true
   use_param_encoder: true
-  param_encoder_dims: [16, 16]
+  param_encoder_dims:
+  - 16
+  - 16
   coord_encoder_dims: null
   nut:
     hidden_dim: 64
     num_layers: 3
-    nu_t_min: 1.0e-3
+    nu_t_min: 0.001
     initial_nut: 0.02
     lr_multiplier: 10.0
-
 physics:
   mu: 0.0035
   rho: 1060.0
   n_collocation: 6000
-
-loss_weights:        # manual fallback (used until adaptive weights kick in)
+loss_weights:
   velocity: 1.0
   physics: 0.01
   pressure: 1.0
@@ -47,7 +41,6 @@ loss_weights:        # manual fallback (used until adaptive weights kick in)
   noslip: 10.0
   inlet: 1.0
   outlet: 1.0
-
 adaptive_weights:
   enabled: true
   update_interval: 250
@@ -55,17 +48,19 @@ adaptive_weights:
   ref: velocity
   weight_cap: 50.0
   physics_floor: 0.01
-
 training:
-  epochs: 12000                      # train to convergence; early stopping will cut it
-  lr: 1.0e-4
-  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  epochs: 12000
+  lr: 0.0001
+  scheduler:
+    type: CosineAnnealingLR
+    eta_min: 1.0e-06
   gradient_clip: 1.0
   eval_interval: 250
   save_interval: 1000
-  # early stopping on the stable in-sample monitor (unweighted component-loss sum)
-  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
-
+  early_stopping:
+    enabled: true
+    patience: 2000
+    min_delta: 1.0e-05
 loaders:
   max_velocity_points: 40000
   wall_normals_method: auto

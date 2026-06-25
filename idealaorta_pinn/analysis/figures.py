@@ -18,7 +18,7 @@ from ..config import FIGURES_DIR, INTERACTIVE_DIR
 from ..data.cache import load_points
 from ..data.registry import CaseRecord, cases_by_id
 from .predict import TrainedModel, predict_physical
-from .streamlines import cfd_streamline_points, pinn_speed_on_points, pinn_streamlines
+from .streamlines import cfd_streamline_points, pinn_speed_on_points
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +80,7 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
     for ax, vals, title, cmap, vm in (
         (axes[0], cfd_speed, "CFD", "turbo", cfd_vmax),
-        (axes[1], pinn_speed, "Surrogate", "turbo", pinn_vmax),
+        (axes[1], pinn_speed, "PINN", "turbo", pinn_vmax),
         (axes[2], err, "Absolute error", "magma", _vmax(err)),
     ):
         sc = ax.scatter(ca, cb, c=vals, s=3, cmap=cmap, vmin=0, vmax=vm)
@@ -96,14 +96,6 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     fig.savefig(path, dpi=300)
     plt.close(fig)
     return path
-
-
-# NOTE: the old `error_vs_diameter` line plot was removed — with a single
-# validated diameter it degenerated to one point, and it mixed the misleading
-# rel-L2 metric. A better parametric summary (one trained model evaluated across
-# its in-sample + held-out diameters, held-out point highlighted, using
-# U_ref-normalized nrmse) will be added once multi-diameter validation results
-# from a single model are available (Stage C / a full leave-one-out sweep).
 
 
 def convergence_curves(history_csv: Path, out_dir: Path = FIGURES_DIR,
@@ -198,46 +190,15 @@ def _ordered_line_arrays(coords: np.ndarray):
     return xs, ys, zs
 
 
-def _pyvista_line_arrays(poly):
-    """Extract (line coords with breaks) and (marker coords, speed) from a pyvista PolyData."""
-    pts = np.asarray(poly.points)
-    if "speed" in poly.point_data:
-        speed = np.asarray(poly["speed"])
-    elif "velocity" in poly.point_data:
-        speed = np.linalg.norm(np.asarray(poly["velocity"]), axis=1)
-    else:
-        speed = np.zeros(len(pts))
-    conn = np.asarray(poly.lines)
-    lx, ly, lz, mx, my, mz, ms = [], [], [], [], [], [], []
-    i = 0
-    while i < len(conn):
-        n = int(conn[i])
-        ids = conn[i + 1:i + 1 + n]
-        i += n + 1
-        seg = pts[ids]
-        lx += seg[:, 0].tolist() + [None]
-        ly += seg[:, 1].tolist() + [None]
-        lz += seg[:, 2].tolist() + [None]
-        mx += seg[:, 0].tolist()
-        my += seg[:, 1].tolist()
-        mz += seg[:, 2].tolist()
-        ms += speed[ids].tolist()
-    return (lx, ly, lz), (np.array(mx), np.array(my), np.array(mz), np.array(ms))
-
-
 def comparison_figure(model: TrainedModel, records: Sequence[CaseRecord],
-                      case_id: int, phase: str, marker_size: float = 2.0,
-                      grid_res: int = 60, n_seed: int = 240, traced: bool = False):
-    """Interactive 1x2 figure: CFD streamlines vs the surrogate on the same lines.
+                      case_id: int, phase: str, marker_size: float = 2.0):
+    """Interactive 1x2 figure: CFD streamlines vs the PINN speed on the same lines.
 
     Both panels draw the CFD-exported streamline geometry; the left is coloured by
-    CFD speed and the right by the surrogate's predicted speed *sampled at the same
-    points* (``traced=False``, default). Colour mismatches localize where the
-    surrogate over/under-predicts along the true flow paths -- a robust comparison
-    that needs no integration. ``traced=True`` instead integrates streamlines
-    through the PINN field (pyvista, masked to the lumen); that path is fragile
-    because integrating an extrapolated/near-wall field can terminate the lines
-    early, so it is not the default. Speeds share one colour scale.
+    CFD speed and the right by the PINN's predicted speed sampled at the same points.
+    Colour mismatches localize where the PINN over/under-predicts along the true flow
+    paths -- a robust comparison that needs no integration. Speeds share one colour
+    scale.
     """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -248,25 +209,12 @@ def comparison_figure(model: TrainedModel, records: Sequence[CaseRecord],
         raise ValueError(f"No 3D streamline data for case {case_id} {phase}")
     cfd_coords, cfd_speed = pts
 
-    if traced:
-        poly = pinn_streamlines(model, records, case_id, phase, grid_res=grid_res, n_seed=n_seed)
-        if poly is None or poly.n_points == 0 or np.asarray(poly.lines).size == 0:
-            raise RuntimeError(
-                f"PINN streamline tracing produced no streamlines for case {case_id} {phase}. "
-                "Check pyvista availability and the trained field, or increase n_seed / grid_res.")
-        (plx, ply, plz), (pmx, pmy, pmz, pinn_speed) = _pyvista_line_arrays(poly)
-        pinn_lines = (plx, ply, plz)
-        pinn_markers = (pmx, pmy, pmz)
-        pinn_pts = np.column_stack([pmx, pmy, pmz])
-        pinn_label = "Surrogate (traced)"
-    else:
-        # Robust: the surrogate field sampled on the CFD streamline geometry.
-        pinn_speed = pinn_speed_on_points(model, cfd_coords, rec, phase)
-        clx2, cly2, clz2 = _ordered_line_arrays(cfd_coords)
-        pinn_lines = (clx2, cly2, clz2)
-        pinn_markers = (cfd_coords[:, 0], cfd_coords[:, 1], cfd_coords[:, 2])
-        pinn_pts = cfd_coords
-        pinn_label = "Surrogate (on CFD streamlines)"
+    # PINN field sampled on the CFD streamline geometry.
+    pinn_speed = pinn_speed_on_points(model, cfd_coords, rec, phase)
+    pinn_lines = _ordered_line_arrays(cfd_coords)
+    pinn_markers = (cfd_coords[:, 0], cfd_coords[:, 1], cfd_coords[:, 2])
+    pinn_pts = cfd_coords
+    pinn_label = "PINN (on CFD streamlines)"
 
     cmax = float(np.percentile(np.concatenate([cfd_speed, pinn_speed]), 99))
     rng = _equal_aspect_ranges(np.vstack([cfd_coords, pinn_pts]))
@@ -313,4 +261,19 @@ def save_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id:
     fig = comparison_figure(model, records, case_id, phase)
     path = out_dir / f"case{case_id:02d}_{phase}_streamlines.html"
     fig.write_html(path, include_plotlyjs="cdn")
+    return path
+
+
+def save_comparison_png(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                        phase: str, out_dir: Path = FIGURES_DIR) -> Path:
+    """Save a static CFD-vs-PINN streamline PNG (kaleido); returns the file path.
+
+    Mirrors the interactive figure so the manuscript figure is regenerated by the
+    pipeline rather than hand-captured from the HTML: the robust speed-on-CFD-lines
+    comparison, written as ``*_streamlines3d.png``.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig = comparison_figure(model, records, case_id, phase)
+    path = out_dir / f"case{case_id:02d}_{phase}_streamlines3d.png"
+    fig.write_image(str(path), width=1600, height=700, scale=2)
     return path

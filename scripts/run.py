@@ -163,7 +163,8 @@ def main() -> None:
         print(f"  case {r['case']} {r['phase']:<9} "
               f"nrmse_phase={r['vel_nrmse_phase']:.4f}  rel-L2={r['vel_rel_l2']:.4f}  "
               f"nrmse/Uref={r['vel_nrmse_uref']:.4f}  "
-              f"recirc CFD/PINN={r['recirc_cfd']:.3f}/{r['recirc_pinn']:.3f}")
+              f"recirc CFD/PINN={r['recirc_cfd']:.3f}/{r['recirc_pinn']:.3f}  "
+              f"swirl CFD/PINN={r['swirl_cfd']:.3f}/{r['swirl_pinn']:.3f}")
     for r in wss_rows:
         print(f"  case {r['case']} {r['phase']:<9} WSS rel-L2={r['wss_rel_l2']:.4f}  "
               f"peak {r['wss_peak_cfd']:.1f}/{r['wss_peak_pinn']:.1f} Pa")
@@ -172,9 +173,9 @@ def main() -> None:
     # Outputs are namespaced per experiment so different stages on the same case
     # don't overwrite each other's plots (figures are keyed by case/phase only).
     if not args.no_figures:
-        from idealaorta_pinn.analysis.figures import plane_comparison, convergence_curves
-        from idealaorta_pinn.analysis.figures_paper import (wss_map, wall_pressure_map,
-                                                            velocity_profile, axial_velocity_profile)
+        from idealaorta_pinn.analysis.figures import (plane_comparison, convergence_curves,
+                                                       save_comparison_png)
+        from idealaorta_pinn.analysis.figures_paper import wss_map
         produced = []
         for cid in cases:
             for ph in phases:
@@ -185,20 +186,22 @@ def main() -> None:
                                                          shared_scale=True, out_dir=fig_dir))
                     except Exception as e:  # noqa: BLE001
                         print(f"  [figure] skip {kind} velocity case {cid} {ph}: {e}")
-                # WSS + wall-pressure maps in BOTH projection planes (XY/XZ)
+                # WSS maps in BOTH projection planes (XY/XZ)
                 for kind in ("XY", "XZ"):
-                    for label, fn in (("wss-map", wss_map), ("wall-pressure", wall_pressure_map)):
-                        try:
-                            produced.append(fn(model, records, cid, ph, kind=kind, out_dir=fig_dir))
-                        except Exception as e:  # noqa: BLE001
-                            print(f"  [figure] skip {kind} {label} case {cid} {ph}: {e}")
-                # transverse bulge profile, axial profile
-                for label, fn in (("bulge-profile", velocity_profile),
-                                  ("axial-profile", axial_velocity_profile)):
                     try:
-                        produced.append(fn(model, records, cid, ph, out_dir=fig_dir))
+                        produced.append(wss_map(model, records, cid, ph, kind=kind, out_dir=fig_dir))
                     except Exception as e:  # noqa: BLE001
-                        print(f"  [figure] skip {label} case {cid} {ph}: {e}")
+                        print(f"  [figure] skip {kind} wss-map case {cid} {ph}: {e}")
+                # static 3D streamline comparison for the manuscript: the robust
+                # speed-on-CFD-lines view (PINN speed sampled on the CFD streamline
+                # geometry). The integrated-through-PINN ("traced") view is intentionally
+                # not generated: it collapses on held-out cases, where the predicted
+                # field is inaccurate and non-solenoidal (high div_rms), so streamline
+                # integration stalls into a blob rather than tracing the lumen.
+                try:
+                    produced.append(save_comparison_png(model, records, cid, ph, out_dir=fig_dir))
+                except Exception as e:  # noqa: BLE001
+                    print(f"  [figure] skip streamlines3d case {cid} {ph}: {e}")
         # training convergence curve (once per run, from loss_history.csv)
         hist = out_dir / "loss_history.csv"
         if hist.exists():

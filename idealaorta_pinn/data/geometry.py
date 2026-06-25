@@ -84,10 +84,42 @@ def compute_wall_normals(points: np.ndarray, method: str = "auto", k: int = 16) 
     return estimate_normals_open3d(points)
 
 
+def _signed_lumen_distance(query: np.ndarray, tree, wall_coords: np.ndarray,
+                           wall_normals: np.ndarray) -> np.ndarray:
+    """Local signed distance into the lumen for each ``query`` point.
+
+    Projects the vector from the nearest wall point onto that wall point's INWARD
+    normal; positive = inside. ``tree`` is a prebuilt cKDTree over ``wall_coords``.
+    """
+    _, idx = tree.query(query)
+    return np.einsum("ij,ij->i", query - wall_coords[idx], wall_normals[idx])
+
+
+def lumen_inside_mask(query: np.ndarray, wall_coords: np.ndarray,
+                      wall_normals: np.ndarray, margin: float = 0.0) -> np.ndarray:
+    """Boolean mask: which ``query`` points lie inside the lumen wall.
+
+    A point is interior when the vector from its nearest wall point to it has a
+    POSITIVE projection on that wall point's INWARD normal (local signed distance
+    > ``margin``). The nearest-wall + inward-normal test follows the boundary into
+    the saccular bulge, so it does not leak across the non-convex geometry the way
+    a convex hull would. ``query`` and ``wall_coords`` must share one coordinate
+    frame (and ``wall_normals`` must be the inward normals for ``wall_coords``).
+    """
+    from scipy.spatial import cKDTree
+
+    query = np.asarray(query, dtype=np.float64)
+    wall_coords = np.asarray(wall_coords, dtype=np.float64)
+    wall_normals = np.asarray(wall_normals, dtype=np.float64)
+    tree = cKDTree(wall_coords)
+    return _signed_lumen_distance(query, tree, wall_coords, wall_normals) > margin
+
+
 def sample_lumen_interior(wall_coords: np.ndarray, wall_normals: np.ndarray,
                           n_points: int, rng: np.random.Generator,
                           margin: float = 0.0, oversample: int = 12,
-                          max_batches: int = 200) -> np.ndarray:
+                          max_batches: int = 200,
+                          bbox: tuple | None = None) -> np.ndarray:
     """S2: uniform rejection-sample ``n_points`` inside the (non-convex) lumen.
 
     A candidate is interior when the vector from its nearest wall point to it has
@@ -95,15 +127,18 @@ def sample_lumen_interior(wall_coords: np.ndarray, wall_normals: np.ndarray,
     distance > ``margin``). The nearest-wall + inward-normal test follows the
     boundary into the saccular bulge, so it does not leak across the non-convex
     geometry the way a convex hull / tube would. Returns ``(<=n_points, 3)`` in
-    the same (standardized) coordinates as ``wall_coords``.
+    the same (standardized) coordinates as ``wall_coords``. Pass ``bbox=(lo, hi)``
+    to restrict sampling to a sub-region (e.g. the saccular bulge band).
     """
     from scipy.spatial import cKDTree
 
     wall_coords = np.asarray(wall_coords, dtype=np.float64)
     wall_normals = np.asarray(wall_normals, dtype=np.float64)
     tree = cKDTree(wall_coords)
-    lo = wall_coords.min(axis=0)
-    hi = wall_coords.max(axis=0)
+    if bbox is None:
+        lo, hi = wall_coords.min(axis=0), wall_coords.max(axis=0)
+    else:
+        lo, hi = np.asarray(bbox[0], float), np.asarray(bbox[1], float)
 
     kept: List[np.ndarray] = []
     have = 0
@@ -111,8 +146,7 @@ def sample_lumen_interior(wall_coords: np.ndarray, wall_normals: np.ndarray,
         if have >= n_points:
             break
         batch = rng.uniform(lo, hi, size=(max((n_points - have) * oversample, 2048), 3))
-        _, idx = tree.query(batch)
-        signed = np.einsum("ij,ij->i", batch - wall_coords[idx], wall_normals[idx])
+        signed = _signed_lumen_distance(batch, tree, wall_coords, wall_normals)
         inside = batch[signed > margin]
         if len(inside):
             kept.append(inside)
@@ -167,3 +201,67 @@ def cross_section_points(axial_pos: float, center, radius: float, axial_dim: int
     coords[:, others[0]] = center[0] + pts2d[:, 0]
     coords[:, others[1]] = center[1] + pts2d[:, 1]
     return coords
+
+
+def sac_axial_band(wall_coords: np.ndarray, n_bins: int = 24,
+                   end_frac: float = 0.15) -> dict:
+    """Locate the saccular bulge as the interior axial band of maximum lumen radius.
+
+    Bins the wall cloud along its largest-span (axial) axis, measures each bin's
+    transverse radius (mean distance from the bin's transverse centroid), and takes
+    the interior bin (excluding the end ``end_frac`` at each end -- inlet/outlet) of
+    largest radius as the sac centre. The band is then grown contiguously around the
+    peak down to half its prominence over the baseline (median) radius, giving an
+    x-range that brackets the bulge. Returns a dict with ``axial_dim``, band
+    ``x_lo``/``x_hi``/``x_center``/``half_width``, transverse ``center2d``, and peak
+    ``radius`` (same frame as ``wall_coords``).
+
+    Healthy (taper-only) geometries have no interior bulge, so the band is shallow
+    and arbitrary; callers should gate sac-specific outputs to diseased cases.
+    """
+    coords = np.asarray(wall_coords, dtype=np.float64)
+    spans = coords.max(axis=0) - coords.min(axis=0)
+    axial = int(np.argmax(spans))
+    others = [d for d in range(3) if d != axial]
+    a = coords[:, axial]
+    lo, hi = float(a.min()), float(a.max())
+    edges = np.linspace(lo, hi, n_bins + 1)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+
+    radii = np.full(n_bins, -1.0)
+    cen2d = np.zeros((n_bins, 2))
+    for b in range(n_bins):
+        upper = a <= edges[b + 1] if b == n_bins - 1 else a < edges[b + 1]
+        m = (a >= edges[b]) & upper
+        if int(m.sum()) < 3:
+            continue
+        ring = coords[m][:, others]
+        c = ring.mean(axis=0)
+        radii[b] = float(np.sqrt(((ring - c) ** 2).sum(axis=1)).mean())
+        cen2d[b] = c
+
+    valid = radii > 0
+    span = hi - lo
+    interior = valid & (centers >= lo + end_frac * span) & (centers <= hi - end_frac * span)
+    pool = interior if interior.any() else valid
+    idx = np.where(pool)[0]
+    peak = int(idx[np.argmax(radii[idx])])
+
+    baseline = float(np.median(radii[valid]))
+    half_level = baseline + 0.5 * (radii[peak] - baseline)
+    left = peak
+    while left - 1 >= 0 and radii[left - 1] >= half_level:
+        left -= 1
+    right = peak
+    while right + 1 < n_bins and radii[right + 1] >= half_level:
+        right += 1
+
+    x_lo, x_hi = float(edges[left]), float(edges[right + 1])
+    return {
+        "axial_dim": axial,
+        "x_lo": x_lo, "x_hi": x_hi,
+        "x_center": float(centers[peak]),
+        "half_width": 0.5 * (x_hi - x_lo),
+        "center2d": cen2d[peak].tolist(),
+        "radius": float(radii[peak]),
+    }

@@ -1,7 +1,8 @@
 """Assemble parametric training bundles from the cached CFD data.
 
 For each ``(case, phase)`` snapshot this builds standardized tensors for:
-  * velocity supervision (dense XY/XZ planes + sparse 3D streamline points),
+    * velocity supervision (3D streamline points by default; XY/XZ are validation/figure slices
+        unless explicitly requested by a diagnostic config),
   * wall supervision (pressure + WSS components + inward normals),
   * interior collocation (a subsample of the velocity points; they are interior
     fluid samples) for the PDE residual,
@@ -26,7 +27,8 @@ from .registry import CaseRecord
 from .geometry import compute_wall_normals
 from .normalize import Normalizer
 
-VELOCITY_KINDS = ("XY", "XZ", "3D")
+VELOCITY_KINDS = ("3D",)
+SLICE_VELOCITY_KINDS = ("XY", "XZ")
 DIASTOLIC_TIME = 2.4
 
 
@@ -119,7 +121,8 @@ def _params_array(norm: Normalizer, diameter_cm: float, beta: float, disease_fla
 def fit_normalizer(records: Sequence[CaseRecord], case_ids: Sequence[int],
                    phases: Sequence[str], mu: float, rho: float,
                    max_points: int = 60_000, seed: int = 42,
-                   per_phase_velocity_scale: bool = False) -> Normalizer:
+                   per_phase_velocity_scale: bool = False,
+                   velocity_kinds: Sequence[str] = VELOCITY_KINDS) -> Normalizer:
     """Fit the global Normalizer on the pooled TRAIN-case data.
 
     With ``per_phase_velocity_scale`` (S1), U_ref is fit on the systolic speeds and
@@ -133,7 +136,7 @@ def fit_normalizer(records: Sequence[CaseRecord], case_ids: Sequence[int],
     for cid in case_ids:
         rec = by_id[cid]
         for phase in phases:
-            vp = _load_velocity_points(rec, phase, max_points, rng)
+            vp = _load_velocity_points(rec, phase, max_points, rng, kinds=velocity_kinds)
             if vp is not None:
                 coords, vel = vp
                 spd = np.linalg.norm(vel, axis=1)
@@ -175,8 +178,9 @@ def build_bundle(records: Sequence[CaseRecord],
                  seed: int = 42) -> Bundle:
     """Build standardized training tensors for the given cases and phases.
 
-    ``velocity_kinds`` selects which velocity sources to supervise on; pass e.g.
-    ``("XY", "3D")`` to hold out the XZ plane for validation (Stage A de-risk).
+    ``velocity_kinds`` selects which velocity sources to supervise on. The default
+    is ``("3D",)`` because XY/XZ exports are slice representations reserved for
+    validation and figures. Pass XY/XZ only for legacy/diagnostic ablations.
     ``volumetric_collocation`` (S2): replace the data-plane collocation subsample
     with points rejection-sampled inside the 3D lumen, so the PDE residual
     constrains the off-plane interior (needs wall points for the interior mask).

@@ -98,12 +98,14 @@ class Trainer:
 
         train_cases = list(data["train_cases"])
         phases = list(data.get("phases", ["systolic", "diastolic"]))
-        velocity_kinds = tuple(data.get("velocity_kinds", ["XY", "XZ", "3D"]))
+        velocity_kinds = tuple(data.get("velocity_kinds", ["3D"]))
 
         print(f"[trainer] fitting normalizer on cases {train_cases}, phases {phases}")
+        print(f"[trainer] velocity supervision sources: {list(velocity_kinds)}")
         self.normalizer: Normalizer = fit_normalizer(
             records, train_cases, phases, mu=mu, rho=rho, seed=self.seed,
-            per_phase_velocity_scale=self.per_phase_vel)
+            per_phase_velocity_scale=self.per_phase_vel,
+            velocity_kinds=velocity_kinds)
         if phys.get("re_override"):
             self._Re = float(phys["re_override"])
         else:

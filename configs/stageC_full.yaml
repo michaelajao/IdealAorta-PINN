@@ -17,7 +17,7 @@ output_dir: models/stageC_full
 data:
   train_cases: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
   phases: [systolic, diastolic]
-  velocity_kinds: [XY, XZ, "3D"]
+  velocity_kinds: ["3D"]
 
 model:
   hidden_dim: 192

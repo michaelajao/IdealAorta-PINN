@@ -1,25 +1,19 @@
-# Stage A + S1 — in-sample reconstruction (Case 1) WITH per-phase velocity scaling.
-# The validation-discipline check: does S1 move the IN-SAMPLE diastolic error
-# (baseline honest per-phase NRMSE = 44.1%)? If it drops a lot, S1 targets the
-# root defect (Cause A), not just the leave-one-out amplifier. n_collocation
-# trimmed to 4000 so it fits on GPU 0 alongside the uvicorn service.
-
 experiment:
   name: stageA_case1_s1
-  description: "Stage A in-sample with S1 per-phase velocity scaling (discipline check)."
-
+  description: Stage A with S1 per-phase velocity scaling and 3D velocity supervision.
 random_seed: 42
 device: cuda
 output_dir: models/stageA_case1_s1
-
 loss_balance:
   per_phase_velocity_scale: true
-
 data:
-  train_cases: [1]
-  phases: [systolic, diastolic]
-  velocity_kinds: [XY, XZ, "3D"]
-
+  train_cases:
+  - 1
+  phases:
+  - systolic
+  - diastolic
+  velocity_kinds:
+  - 3D
 model:
   hidden_dim: 128
   num_layers: 5
@@ -27,20 +21,20 @@ model:
   fourier_scale: 1.0
   use_fourier: true
   use_param_encoder: true
-  param_encoder_dims: [16, 16]
+  param_encoder_dims:
+  - 16
+  - 16
   coord_encoder_dims: null
   nut:
     hidden_dim: 64
     num_layers: 3
-    nu_t_min: 1.0e-3
+    nu_t_min: 0.001
     initial_nut: 0.02
     lr_multiplier: 10.0
-
 physics:
   mu: 0.0035
   rho: 1060.0
   n_collocation: 4000
-
 loss_weights:
   velocity: 1.0
   physics: 0.01
@@ -49,7 +43,6 @@ loss_weights:
   noslip: 10.0
   inlet: 1.0
   outlet: 1.0
-
 adaptive_weights:
   enabled: true
   update_interval: 250
@@ -57,16 +50,19 @@ adaptive_weights:
   ref: velocity
   weight_cap: 50.0
   physics_floor: 0.01
-
 training:
   epochs: 12000
-  lr: 1.0e-4
-  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  lr: 0.0001
+  scheduler:
+    type: CosineAnnealingLR
+    eta_min: 1.0e-06
   gradient_clip: 1.0
   eval_interval: 250
   save_interval: 1000
-  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
-
+  early_stopping:
+    enabled: true
+    patience: 2000
+    min_delta: 1.0e-05
 loaders:
   max_velocity_points: 40000
   wall_normals_method: auto

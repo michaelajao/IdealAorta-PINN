@@ -24,7 +24,7 @@ loss_balance:
 data:
   train_cases: [1, 2, 3, 4, 5, 6]
   phases: [systolic, diastolic]
-  velocity_kinds: [XY, XZ, "3D"]
+  velocity_kinds: ["3D"]
 
 model:
   hidden_dim: 128
