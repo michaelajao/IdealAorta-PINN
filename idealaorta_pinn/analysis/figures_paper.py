@@ -74,7 +74,7 @@ def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, ph
     return _three_panel(
         coords[:, a], coords[:, b], cfd, pinn, err,
         titles=("CFD WSS", "PINN WSS", "Absolute error"),
-        cmaps=("inferno", "inferno", "magma"),
+        cmaps=("turbo", "turbo", "magma"),
         vmaxes=(vm, vm, float(np.percentile(err, 99)) or 1e-9),
         unit="Pa", axis_labels=("xyz"[a] + " (m)", "xyz"[b] + " (m)"),
         out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_{kind}_wss_map.png"))
