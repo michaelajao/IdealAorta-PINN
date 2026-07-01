@@ -603,6 +603,24 @@ class Trainer:
             print(f"[trainer] resume requested but no {path.name}; starting fresh.")
             return
         state = torch.load(path, map_location=self.device, weights_only=False)
+        # Guard against resurrecting an incompatible (e.g. historically leaky) run:
+        # the sidecar carries the config it was written under. Refuse to continue if
+        # the supervision sources or the training case list differ from the current
+        # config, since that would restore weights/optimizer state trained on a
+        # different data regime (e.g. XY+XZ plane-supervised) into a clean run.
+        saved_data = (state.get("config") or {}).get("data", {})
+        cur_data = self.cfg.get("data", {})
+        saved_fp = (tuple(saved_data.get("velocity_kinds", ["3D"])),
+                    tuple(saved_data.get("train_cases", [])))
+        cur_fp = (tuple(cur_data.get("velocity_kinds", ["3D"])),
+                  tuple(cur_data.get("train_cases", [])))
+        if saved_fp != cur_fp:
+            raise RuntimeError(
+                f"refusing to resume from {path.name}: it was written with "
+                f"velocity_kinds={saved_fp[0]} train_cases={saved_fp[1]}, but the "
+                f"current config has velocity_kinds={cur_fp[0]} "
+                f"train_cases={cur_fp[1]}. Delete the stale resume_state.pt or run "
+                f"with a matching config.")
         for k, n in self.networks.items():
             n.load_state_dict(state["networks"][k])
         self.opt.load_state_dict(state["opt"])

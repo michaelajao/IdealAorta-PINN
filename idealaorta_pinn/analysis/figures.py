@@ -16,7 +16,9 @@ import numpy as np
 
 from ..config import FIGURES_DIR, INTERACTIVE_DIR
 from ..data.cache import load_points
+from ..data.geometry import compute_wall_normals
 from ..data.registry import CaseRecord, cases_by_id
+from .metrics import predict_wss_physical
 from .predict import TrainedModel, predict_physical
 
 
@@ -304,4 +306,333 @@ def save_comparison_png(model: TrainedModel, records: Sequence[CaseRecord], case
     fig = comparison_figure(model, records, case_id, phase)
     path = out_dir / f"case{case_id:02d}_{phase}_streamlines3d.png"
     fig.write_image(str(path), width=1600, height=700, scale=2)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# Paper WSS figures: wall-shear-stress maps and the parametric diameter sweep.
+# (Moved here from the former analysis/figures_paper.py; they reuse the
+# inference helpers in analysis.metrics so the WSS is computed exactly as the
+# trained model defines it.)
+# ---------------------------------------------------------------------------
+
+_KIND_AXES = {"XY": (0, 1), "XZ": (0, 2), "YZ": (1, 2)}
+
+
+def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes,
+                 unit, out_path: Path, axis_labels=("", ""), diverging=False, vmin=0.0):
+    """CFD | Surrogate | Absolute-error scatter maps on a projected plane.
+
+    Clean publication panels (named columns, no exposed [min,max] debug ranges,
+    no baked-in suptitle -- the LaTeX caption supplies case/phase/disease state)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
+    for ax, vals, title, cmap, vm in zip(axes, (cfd, pinn, err), titles, cmaps, vmaxes):
+        lo = -vm if diverging else vmin
+        sc = ax.scatter(ca, cb, c=vals, s=4, cmap=cmap, vmin=lo, vmax=vm)
+        ax.set_title(title, fontsize=13)
+        ax.set_xlabel(axis_labels[0], fontsize=11)
+        ax.set_ylabel(axis_labels[1], fontsize=11)
+        ax.tick_params(labelsize=9)
+        ax.set_aspect("equal")
+        fig.colorbar(sc, ax=ax, shrink=0.8, label=unit)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+    return out_path
+
+
+def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, phase: str,
+            kind: str = "XZ", max_points: int = 20_000, out_dir: Path = FIGURES_DIR) -> Path:
+    """CFD | Surrogate | error wall-shear-stress magnitude (Pa), wall points
+    projected onto the ``kind`` plane (``XY`` looks down the vessel; ``XZ`` is the
+    long-axis side view)."""
+    rec = cases_by_id(records)[case_id]
+    df = load_points(rec, "WSS", phase)
+    if df is None or "wss" not in df.columns:
+        raise ValueError(f"no WSS data for case {case_id} {phase}")
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+    cfd = df["wss"].to_numpy(float)
+    normals = compute_wall_normals(coords)
+    beta = rec.beta if rec.beta is not None else 1.0
+    pinn = predict_wss_physical(model, coords, normals, rec.inlet_diameter_cm,
+                                rec.disease_flag, phase, beta=beta)["wss_magnitude"]
+    err = np.abs(pinn - cfd)
+    a, b = _KIND_AXES[kind]
+    vm = float(np.percentile(cfd, 99)) or 1e-9
+    return _three_panel(
+        coords[:, a], coords[:, b], cfd, pinn, err,
+        titles=("CFD WSS", "PINN WSS", "Absolute error"),
+        cmaps=("turbo", "turbo", "magma"),
+        vmaxes=(vm, vm, float(np.percentile(err, 99)) or 1e-9),
+        unit="Pa", axis_labels=("xyz"[a] + " (m)", "xyz"[b] + " (m)"),
+        out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_{kind}_wss_map.png"))
+
+
+# axisymmetric / anterior / posterior diseased case ids by inlet diameter (cm)
+_SYMMETRY_SERIES = {"axisymmetric": {2.0: 1, 2.3: 4, 2.6: 7},
+                    "anterior": {2.0: 2, 2.3: 5, 2.6: 8},
+                    "posterior": {2.0: 3, 2.3: 6, 2.6: 9}}
+
+
+def mu_sweep(model: TrainedModel, records: Sequence[CaseRecord], symmetry: str,
+             phase: str, out_dir: Path = FIGURES_DIR, n: int = 25) -> Path:
+    """Parametric response: on a fixed geometry (the held $2.3$ cm case of the
+    given symmetry series), sweep the inlet-diameter parameter $d^{*}$ over
+    [2.0, 2.6] cm and plot the predicted peak WSS, against the per-diameter CFD
+    peak WSS of the matching-symmetry cases. The geometry is held fixed, so the
+    curve isolates the network's response to $d^{*}$; the per-geometry markers
+    (distinct meshes) give the physical trend for context."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    series = _SYMMETRY_SERIES[symmetry]
+    geom_rec = cases_by_id(records)[series[2.3]]            # fixed 2.3 cm geometry
+    wdf = load_points(geom_rec, "WSS", phase)
+    coords = wdf[["x", "y", "z"]].to_numpy(float)
+    normals = compute_wall_normals(coords)
+    beta = geom_rec.beta if geom_rec.beta is not None else 1.0
+
+    ds = np.linspace(2.0, 2.6, n)
+    pred_peak = []
+    for d in ds:
+        w = predict_wss_physical(model, coords, normals, float(d), geom_rec.disease_flag,
+                                 phase, beta=beta)["wss_magnitude"]
+        pred_peak.append(float(np.percentile(w, 99)))
+
+    # CFD truth and the surrogate evaluated on EACH REAL geometry (matching d*),
+    # so the surrogate-vs-CFD comparison is like-for-like per diameter -- unlike the
+    # fixed-geometry sweep curve, whose 2.0/2.6 values sit on the 2.3 cm mesh.
+    cfd_d, cfd_peak, pinn_d, pinn_real_peak = [], [], [], []
+    for d_cm, cid in series.items():
+        rec = cases_by_id(records)[cid]
+        cdf = load_points(rec, "WSS", phase)
+        if cdf is None or "wss" not in cdf.columns:
+            continue
+        cfd_d.append(d_cm)
+        cfd_peak.append(float(np.percentile(cdf["wss"].to_numpy(float), 99)))
+        rc = cdf[["x", "y", "z"]].to_numpy(float)
+        rn = compute_wall_normals(rc)
+        rbeta = rec.beta if rec.beta is not None else 1.0
+        w = predict_wss_physical(model, rc, rn, float(d_cm), rec.disease_flag,
+                                 phase, beta=rbeta)["wss_magnitude"]
+        pinn_d.append(d_cm)
+        pinn_real_peak.append(float(np.percentile(w, 99)))
+
+    fig, ax = plt.subplots(figsize=(6.4, 4.6), constrained_layout=True)
+    ax.plot(ds, pred_peak, "-", color="#2c6e9c", lw=2,
+            label="PINN (fixed 2.3 cm geometry, sweep $d^{*}$)")
+    ax.scatter(pinn_d, pinn_real_peak, marker="X", s=90, color="#c0392b", zorder=6,
+               label="PINN (each real geometry)")
+    ax.scatter(cfd_d, cfd_peak, color="k", zorder=5, label="CFD peak WSS (per geometry)")
+    ax.axvline(2.3, ls=":", color="gray", lw=1)
+    ax.text(2.305, ax.get_ylim()[0], " held-out", color="gray", fontsize=9, va="bottom")
+    ax.set_xlabel("inlet diameter $d^{*}$ (cm)", fontsize=11)
+    ax.set_ylabel("peak WSS (Pa, 99th pct)", fontsize=11)
+    ax.set_title(f"Parametric WSS response — {symmetry}, {phase}", fontsize=12)
+    ax.legend(fontsize=9)
+    out = Path(out_dir) / f"mu_sweep_{symmetry}_{phase}_wss.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=200)
+    plt.close(fig)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# Per-run diagnostic QC figures (A9 residual/eddy-viscosity, A10 calibration,
+# A11 error summary). Auto-produced per (case, phase) or per run; regenerable
+# under --skip-train.
+# ---------------------------------------------------------------------------
+def physics_residual_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                         phase: str, kind: str = "XZ", max_points: int = 20_000,
+                         out_dir: Path = FIGURES_DIR) -> Path:
+    """A9: continuity residual $|\\nabla\\!\\cdot\\!u_s|$ and the learned eddy
+    viscosity $\\nu_{t,s}$ on a CFD plane (both in standardized units). The field
+    should satisfy incompressibility; the residual concentrating on the centerline
+    jet is the known failure locus, and $\\nu_t$ shows where the closure adds
+    diffusion."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import torch
+
+    rec = cases_by_id(records)[case_id]
+    df = load_points(rec, kind, phase)
+    if df is None:
+        raise ValueError(f"No {kind} data for case {case_id} {phase}")
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+
+    norm = model.normalizer
+    cs = norm.coords_std(coords).astype(np.float32)
+    beta = rec.beta if rec.beta is not None else 1.0
+    mu = np.array([norm.diameter_nd(rec.inlet_diameter_cm), float(beta),
+                   float(rec.disease_flag), 1.0 if phase == "systolic" else 0.0],
+                  dtype=np.float32)
+    nets = model.networks
+    div_parts, nut_parts = [], []
+    for i in range(0, len(cs), 20_000):
+        c = cs[i:i + 20_000]
+        params = torch.tensor(np.tile(mu, (len(c), 1)), device=model.device)
+        x = torch.tensor(c[:, 0:1], device=model.device, requires_grad=True)
+        y = torch.tensor(c[:, 1:2], device=model.device, requires_grad=True)
+        z = torch.tensor(c[:, 2:3], device=model.device, requires_grad=True)
+        net_in = torch.cat([x, y, z, params], dim=1)
+        u = nets["u"](net_in).view(-1, 1)
+        v = nets["v"](net_in).view(-1, 1)
+        w = nets["w"](net_in).view(-1, 1)
+        one = torch.ones_like(u)
+
+        def g(o, i_):
+            return torch.autograd.grad(o, i_, grad_outputs=one, retain_graph=True,
+                                       create_graph=False)[0]
+
+        d = (g(u, x) + g(v, y) + g(w, z)).detach().abs()
+        nt = (nets["nut"](net_in).view(-1, 1).detach() if "nut" in nets
+              else torch.zeros_like(u))
+        div_parts.append(d.cpu().numpy())
+        nut_parts.append(nt.cpu().numpy())
+    div = np.vstack(div_parts).ravel()
+    nut = np.vstack(nut_parts).ravel()
+
+    a, b = _plane_axes(coords)
+    ca, cb = coords[:, a], coords[:, b]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), constrained_layout=True)
+    for ax, vals, title, cmap in (
+        (axes[0], div, r"continuity residual $|\nabla\!\cdot\!u_s|$", "magma"),
+        (axes[1], nut, r"eddy viscosity $\nu_{t,s}$", "viridis"),
+    ):
+        vm = float(np.percentile(vals, 99)) or 1e-9
+        sc = ax.scatter(ca, cb, c=vals, s=3, cmap=cmap, vmin=0, vmax=vm)
+        ax.set_title(title, fontsize=12)
+        ax.set_xlabel("xyz"[a] + " (m)", fontsize=11)
+        ax.set_ylabel("xyz"[b] + " (m)", fontsize=11)
+        ax.set_aspect("equal")
+        fig.colorbar(sc, ax=ax, shrink=0.8)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"case{case_id:02d}_{phase}_residual_map.png"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    return path
+
+
+def scatter_density(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                    phase: str, kind: str = "XZ", max_points: int = 40_000,
+                    out_dir: Path = FIGURES_DIR) -> Path:
+    """A10: PINN-vs-CFD calibration hexbins for slice speed and wall WSS. Points on
+    the $y=x$ line are perfect; a best-fit slope $>1$ flags the jet-core / peak
+    over-prediction. Each panel is annotated with the OLS slope and $R^2$."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rec = cases_by_id(records)[case_id]
+    beta = rec.beta if rec.beta is not None else 1.0
+
+    def _fit(cfd: np.ndarray, pinn: np.ndarray):
+        if len(cfd) < 2 or float(np.std(cfd)) < 1e-12:
+            return float("nan"), float("nan")
+        m, b = np.polyfit(cfd, pinn, 1)
+        ss_res = float(np.sum((pinn - (m * cfd + b)) ** 2))
+        ss_tot = float(np.sum((pinn - pinn.mean()) ** 2))
+        r2 = 1.0 - ss_res / ss_tot if ss_tot > 1e-12 else float("nan")
+        return float(m), float(r2)
+
+    panels = []
+    dfv = load_points(rec, kind, phase)
+    if dfv is not None and {"u", "v", "w"}.issubset(dfv.columns):
+        if len(dfv) > max_points:
+            dfv = dfv.sample(max_points, random_state=0)
+        coords = dfv[["x", "y", "z"]].to_numpy(float)
+        cfd_s = (dfv["speed"].to_numpy(float) if "speed" in dfv
+                 else np.linalg.norm(dfv[["u", "v", "w"]].to_numpy(float), axis=1))
+        if float(np.abs(cfd_s).max()) > 1e-8:
+            pinn_s = predict_physical(model, coords, rec.inlet_diameter_cm,
+                                      rec.disease_flag, phase, beta=beta)["speed"]
+            panels.append(("speed (m/s)", cfd_s, pinn_s))
+    dfw = load_points(rec, "WSS", phase)
+    if dfw is not None and "wss" in dfw.columns:
+        if len(dfw) > max_points:
+            dfw = dfw.sample(max_points, random_state=0)
+        wc = dfw[["x", "y", "z"]].to_numpy(float)
+        cfd_w = dfw["wss"].to_numpy(float)
+        pinn_w = predict_wss_physical(model, wc, compute_wall_normals(wc),
+                                      rec.inlet_diameter_cm, rec.disease_flag, phase,
+                                      beta=beta)["wss_magnitude"]
+        panels.append(("WSS (Pa)", cfd_w, pinn_w))
+    if not panels:
+        raise ValueError(f"no data for scatter_density case {case_id} {phase}")
+
+    fig, axes = plt.subplots(1, len(panels), figsize=(5.2 * len(panels), 4.6),
+                             squeeze=False)
+    for ax, (label, cfd, pinn) in zip(axes[0], panels):
+        hb = ax.hexbin(cfd, pinn, gridsize=45, cmap="viridis", mincnt=1, bins="log")
+        hi = max(float(cfd.max()), float(pinn.max())) or 1e-9
+        ax.plot([0, hi], [0, hi], "w--", lw=1.2, alpha=0.85)
+        m, r2 = _fit(cfd, pinn)
+        ax.set_title(f"{label}: slope={m:.2f}, $R^2$={r2:.3f}", fontsize=11)
+        ax.set_xlabel(f"CFD {label}", fontsize=11)
+        ax.set_ylabel(f"PINN {label}", fontsize=11)
+        ax.set_xlim(0, hi * 1.02)
+        ax.set_ylim(0, hi * 1.02)
+        ax.set_aspect("equal")
+        fig.colorbar(hb, ax=ax, shrink=0.8, label="count")
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"case{case_id:02d}_{phase}_scatter_density.png"
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    return path
+
+
+def error_summary(metrics_dir: Path, out_dir: Path = FIGURES_DIR,
+                  name: str = "error_summary") -> Optional[Path]:
+    """A11: per-case velocity NRMSE and WSS NRMSE, systolic vs diastolic, as grouped
+    bars read from ``report/metrics/<exp>/{velocity,wss}.json``. Catches phase
+    collapse (a diastolic bar towering over systolic) at a glance."""
+    import json
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    metrics_dir = Path(metrics_dir)
+
+    def _load(kind: str, key: str) -> Dict:
+        p = metrics_dir / f"{kind}.json"
+        if not p.exists():
+            return {}
+        return {(r["case"], r["phase"]): r.get(key) for r in json.loads(p.read_text())}
+
+    vel = _load("velocity", "vel_nrmse_phase")
+    wss = _load("wss", "wss_nrmse")
+    cases = sorted({c for (c, _ph) in list(vel) + list(wss)})
+    if not cases:
+        return None
+
+    x = np.arange(len(cases))
+    wdt = 0.38
+    fig, axes = plt.subplots(1, 2, figsize=(max(6.0, 1.1 * len(cases)), 4.2))
+    for ax, data, title in ((axes[0], vel, "Velocity NRMSE (per-phase)"),
+                            (axes[1], wss, "WSS NRMSE")):
+        sysv = [data.get((c, "systolic"), np.nan) for c in cases]
+        diav = [data.get((c, "diastolic"), np.nan) for c in cases]
+        ax.bar(x - wdt / 2, sysv, wdt, label="systolic", color="#c0392b")
+        ax.bar(x + wdt / 2, diav, wdt, label="diastolic", color="#2c6fbb")
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"C{c}" for c in cases], fontsize=9)
+        ax.set_title(title, fontsize=11)
+        ax.grid(axis="y", alpha=0.3)
+        ax.legend(fontsize=8)
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{name}.png"
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
     return path

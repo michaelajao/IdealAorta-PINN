@@ -87,15 +87,33 @@ def main() -> None:
                     help="Do not mirror stdout/stderr to report/logs/<experiment>/run.log.")
     ap.add_argument("--overwrite-output", action="store_true",
                     help="Overwrite existing experiment outputs instead of archiving them before training.")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="Override random_seed and suffix the experiment name/output_dir with "
+                         "_seed<N>, so a seed sweep does not overwrite the base run.")
+    ap.add_argument("--name-suffix", type=str, default=None,
+                    help="Append _<suffix> to the experiment name and output_dir (variant runs).")
     args = ap.parse_args()
 
     cfg = load_yaml(args.config)
     if args.epochs is not None:
         cfg.setdefault("training", {})["epochs"] = args.epochs
+    # --seed / --name-suffix: derive a distinct experiment name + output_dir so a
+    # seed sweep or variant run never overwrites the base run's outputs.
+    if args.seed is not None:
+        cfg["random_seed"] = args.seed
+    _suffix = args.name_suffix or (f"seed{args.seed}" if args.seed is not None else None)
+    if _suffix:
+        cfg["experiment"]["name"] = f"{cfg['experiment']['name']}_{_suffix}"
+        cfg["output_dir"] = f"models/{cfg['experiment']['name']}"
     cfg["device"] = args.device
     cfg["resume"] = bool(args.resume)
     name = cfg["experiment"]["name"]
     out_dir = _resolve(cfg.get("output_dir", f"models/{name}"))
+    # Safety: the output dir must correspond to the experiment name, so seed/variant
+    # runs never silently write into another run's directory.
+    if out_dir.name != name:
+        raise SystemExit(f"[run] output_dir '{out_dir.name}' != experiment name '{name}'; "
+                         "point output_dir at models/<name> or use --name-suffix.")
     fig_dir = FIGURES_DIR / name
     paper_dir = PAPER_FIGURES_DIR / name
     inter_dir = INTERACTIVE_DIR / name
@@ -173,7 +191,8 @@ def main() -> None:
     if not args.no_figures:
         from idealaorta_pinn.analysis.figures import (plane_comparison, convergence_curves,
                                                        save_comparison_png)
-        from idealaorta_pinn.analysis.figures_paper import wss_map
+        from idealaorta_pinn.analysis.figures import (wss_map, physics_residual_map,
+                                                       scatter_density, error_summary)
         produced = []
         for cid in cases:
             for ph in phases:
@@ -200,6 +219,16 @@ def main() -> None:
                     produced.append(save_comparison_png(model, records, cid, ph, out_dir=fig_dir))
                 except Exception as e:  # noqa: BLE001
                     print(f"  [figure] skip streamlines3d case {cid} {ph}: {e}")
+                # A9/A10 diagnostics: continuity + nu_t residual map, and the
+                # PINN-vs-CFD calibration hexbins (per case, phase).
+                try:
+                    produced.append(physics_residual_map(model, records, cid, ph, out_dir=fig_dir))
+                except Exception as e:  # noqa: BLE001
+                    print(f"  [figure] skip residual-map case {cid} {ph}: {e}")
+                try:
+                    produced.append(scatter_density(model, records, cid, ph, out_dir=fig_dir))
+                except Exception as e:  # noqa: BLE001
+                    print(f"  [figure] skip scatter-density case {cid} {ph}: {e}")
         # training convergence curve (once per run, from loss_history.csv)
         hist = out_dir / "loss_history.csv"
         if hist.exists():
@@ -207,6 +236,13 @@ def main() -> None:
                 produced.append(convergence_curves(hist, out_dir=fig_dir, title=f"{name} — convergence"))
             except Exception as e:  # noqa: BLE001
                 print(f"  [figure] skip convergence: {e}")
+        # A11 per-run QC card: grouped bars of vel/WSS NRMSE, systolic vs diastolic.
+        try:
+            es = error_summary(metrics_dir, out_dir=fig_dir)
+            if es is not None:
+                produced.append(es)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [figure] skip error-summary: {e}")
         # Generated figures live ONLY under report/figures/<experiment>/ (regenerable,
         # gitignored). paper/figures/ is reserved for figures the author DELIBERATELY
         # curates into the manuscript (tracked in git) — we do not auto-copy, so the

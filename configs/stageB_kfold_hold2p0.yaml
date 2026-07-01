@@ -1,18 +1,17 @@
-# Richer leave-2.3cm-out (HEADLINE) — train on ALL diseased cases at 2.0 & 2.6 cm,
-# predict the held-out 2.0 cm cases. This is the stronger generalization claim than the
-# 2-case stageB_loo_2p3: the model now sees both training diameters across every
-# disease-symmetry class (axisym/anterior/posterior) and must interpolate the unseen
-# middle diameter for all three symmetries.
-#   train: cases 1,2,3 (2.0 cm) + 7,8,9 (2.6 cm)   [diseased]
-#   held-out (validate): cases 4,5,6 (2.3 cm, all symmetries)
+# Leave-2.0cm-out fold — train on ALL diseased cases at 2.3 & 2.6 cm, predict the
+# held-out 2.0 cm cases. The model sees both training diameters across every
+# disease-symmetry class (axisym/anterior/posterior) and must EXTRAPOLATE below the
+# training range to the unseen 2.0 cm diameter for all three symmetries.
+#   train: cases 4,5,6 (2.3 cm) + 7,8,9 (2.6 cm)   [diseased]
+#   held-out (evaluate): cases 1,2,3 (2.0 cm, all symmetries)
 # Architecture = final stack: S1 per-phase scaling + S2 volumetric collocation,
-# isotropic Fourier (S4 dropped). This arm: num_frequencies=16 (best WSS in-sample).
-# Paired with stageB_richerloo_f12 (12 freq) to let the held-out result pick the
-# generalization-optimal bandwidth. Memory trimmed (6 train cases = 12 groups).
+# isotropic Fourier (S4 dropped), num_frequencies=16. One of three k-fold arms
+# (hold2p0 / richerloo_f16 = hold-2.3cm / hold2p6) that together cover every inlet
+# diameter. Memory trimmed (6 train cases = 12 groups).
 
 experiment:
   name: stageB_kfold_hold2p0
-  description: "Richer LOO 2.3cm (train 1,2,3,7,8,9; hold 1,2,3 (2.0 cm)). S1+S2 isotropic, 16 freq."
+  description: "Leave-2.0cm-out (train 4,5,6,7,8,9; hold 1,2,3 = 2.0 cm). S1+S2 isotropic, 16 freq."
 
 random_seed: 42
 device: cuda

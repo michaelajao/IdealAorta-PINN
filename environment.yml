@@ -1,9 +1,9 @@
-# Conda environment spec mirroring the verified `dl_env` used for development.
+# Conda environment spec mirroring the verified `deep_tf` env used for development.
 # The project was developed against this environment (Python 3.11, torch 2.7
 # with CUDA 12.8). Recreate with:
 #     conda env create -f environment.yml
-# or simply reuse the existing `dl_env`.
-name: idealaorta-pinn
+# or simply reuse the existing `deep_tf` env.
+name: deep_tf
 channels:
   - pytorch
   - nvidia

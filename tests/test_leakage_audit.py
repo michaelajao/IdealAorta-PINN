@@ -13,7 +13,8 @@ from __future__ import annotations
 import pytest
 
 from idealaorta_pinn.data.cache import load_points
-from idealaorta_pinn.data.loaders import build_bundle, fit_normalizer
+from idealaorta_pinn.data.loaders import (SLICE_VELOCITY_KINDS, VELOCITY_KINDS,
+                                          build_bundle, fit_normalizer)
 from idealaorta_pinn.data.registry import cases_by_id, load_registry
 
 # Diseased leave-2.3-out split: train on 2.0 cm, hold a 2.3 cm case.
@@ -66,3 +67,38 @@ def test_build_bundle_emits_no_held_case_supervision(records):
     assert group_cases.isdisjoint(set(HELD))           # held case never appears
     for g in bundle.groups:
         assert g.case_id in TRAIN
+
+
+def test_default_velocity_supervision_excludes_plotting_planes():
+    """The historical leak supervised velocity on the XY/XZ *plotting* planes that
+    are reserved for validation and figures. Lock the module default so it can never
+    silently pull those planes back into supervision."""
+    assert VELOCITY_KINDS == ("3D",)
+    assert set(SLICE_VELOCITY_KINDS) == {"XY", "XZ"}
+    assert not (set(VELOCITY_KINDS) & set(SLICE_VELOCITY_KINDS)), \
+        "default velocity supervision must not overlap the validation plane slices"
+
+
+def test_plane_slices_are_genuinely_out_of_supervision(records):
+    """A bundle built with the default (3D-only) must carry strictly fewer velocity
+    supervision points than one that also pools the XY/XZ planes. This proves the
+    plane data is present yet excluded -- not merely missing -- which is the exact
+    condition the mixed-supervision checkpoints violated."""
+    by = cases_by_id(records)
+    train = [by[c] for c in TRAIN]
+    norm = fit_normalizer(train, TRAIN, ["systolic"], MU, RHO)
+
+    def n_vel(kinds):
+        b = build_bundle(train, TRAIN, ["systolic"], norm, device="cpu",
+                         max_velocity_points=10 ** 9, n_collocation=100,
+                         velocity_kinds=kinds)
+        return sum(int(g.tensors["u_t"].shape[0])
+                   for g in b.groups if "u_t" in g.tensors)
+
+    n_3d = n_vel(("3D",))
+    assert n_3d > 0, "no 3D velocity supervision (data missing?)"
+    n_with_planes = n_vel(("XY", "XZ", "3D"))
+    if n_with_planes == n_3d:
+        pytest.skip("XY/XZ plane cache absent or degenerate for this case")
+    assert n_with_planes > n_3d, \
+        "XY/XZ plane points are not excluded from the default 3D-only supervision"
