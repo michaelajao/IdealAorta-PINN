@@ -104,22 +104,35 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     cfd_vmax = _vmax(cfd_speed)
     pinn_vmax = cfd_vmax if shared_scale else _vmax(pinn_speed)
 
-    # Clean publication panels: named columns (CFD / Surrogate / Absolute error),
-    # no exposed [min,max] debug ranges in titles, and no baked-in suptitle -- the
-    # LaTeX figure caption supplies case geometry, phase, and disease state.
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
-    for ax, vals, title, cmap, vm in (
-        (axes[0], cfd_speed, "CFD", "turbo", cfd_vmax),
-        (axes[1], pinn_speed, "PINN", "turbo", pinn_vmax),
-        (axes[2], err, "Absolute error", "magma", _vmax(err)),
-    ):
+    # Clean publication panels, arranged side by side (CFD | PINN | absolute
+    # error). To keep three panels of a long, thin tube legible without a wall of
+    # redundant colorbars, the two speed panels SHARE one CFD-driven colorbar
+    # (so any PINN over-prediction shows as saturation rather than being hidden
+    # by per-panel rescaling); only the error panel carries a second bar. No
+    # baked-in suptitle -- the LaTeX caption supplies geometry/phase/disease.
+    speed_shared = shared_scale or abs(pinn_vmax - cfd_vmax) < 1e-12
+    fig, axes = plt.subplots(1, 3, figsize=(15, 3.4), constrained_layout=True)
+
+    def _panel(ax, vals, title, cmap, vm):
         sc = ax.scatter(ca, cb, c=vals, s=3, cmap=cmap, vmin=0, vmax=vm)
         ax.set_title(title, fontsize=13)
-        ax.set_xlabel("xyz"[a] + " (m)", fontsize=11)
-        ax.set_ylabel("xyz"[b] + " (m)", fontsize=11)
-        ax.tick_params(labelsize=9)
+        ax.set_xlabel("xyz"[a] + " (m)", fontsize=10)
+        ax.set_ylabel("xyz"[b] + " (m)", fontsize=10)
+        ax.tick_params(labelsize=8)
         ax.set_aspect("equal")
-        fig.colorbar(sc, ax=ax, shrink=0.8, label="speed (m/s)")
+        return sc
+
+    sc_cfd = _panel(axes[0], cfd_speed, "CFD", "turbo", cfd_vmax)
+    sc_pinn = _panel(axes[1], pinn_speed, "PINN", "turbo", pinn_vmax)
+    sc_err = _panel(axes[2], err, "Absolute error", "magma", _vmax(err))
+
+    if speed_shared:
+        # one colorbar shared by CFD+PINN -- honest common scale, less clutter
+        fig.colorbar(sc_pinn, ax=[axes[0], axes[1]], shrink=0.85, label="speed (m/s)")
+    else:
+        fig.colorbar(sc_cfd, ax=axes[0], shrink=0.85, label="speed (m/s)")
+        fig.colorbar(sc_pinn, ax=axes[1], shrink=0.85, label="speed (m/s)")
+    fig.colorbar(sc_err, ax=axes[2], shrink=0.85, label="|error| (m/s)")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"case{case_id:02d}_{phase}_{kind}_velocity.png"

@@ -528,8 +528,14 @@ class Trainer:
                 # Show ALL raw component losses (not just a subset) so training is
                 # fully observable; loss_history.csv stores the same columns.
                 comp = "  ".join(f"{c[:4]}={losses[c]:.2e}" for c in COMPONENTS)
+                # Cumulative throughput + ETA: gives an honest wall-clock estimate
+                # for the run (used for the CFD-vs-surrogate timing comparison).
+                done = epoch - self.start_epoch
+                eps = done / max(time.time() - t0, 1e-9)
+                eta_min = (epochs - epoch) / eps / 60.0 if eps > 0 else float("nan")
                 msg = (f"  ep {epoch:>6} lr={self.opt.param_groups[0]['lr']:.1e} "
-                       f"total={losses['total']:.3e}  {comp}  monitor={monitor:.4f}")
+                       f"total={losses['total']:.3e}  {comp}  monitor={monitor:.4f}"
+                       f"  [{eps:.1f} ep/s, ETA {eta_min:.1f} min]")
                 if holdout_metric is not None:
                     msg += f"  holdout_relL2={holdout_metric:.4f}"
                 print(msg)

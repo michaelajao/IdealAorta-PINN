@@ -37,6 +37,16 @@ def _pearson(pred: np.ndarray, true: np.ndarray) -> float:
     return float(np.mean((a - a.mean()) * (b - b.mean())) / (sa * sb))
 
 
+def _spearman(pred: np.ndarray, true: np.ndarray) -> float:
+    """Spearman rank correlation (Pearson of ranks); NaN for <2 points."""
+    a, b = np.asarray(pred, float).ravel(), np.asarray(true, float).ravel()
+    if a.size < 2:
+        return float("nan")
+    ra = np.argsort(np.argsort(a)).astype(float)
+    rb = np.argsort(np.argsort(b)).astype(float)
+    return _pearson(ra, rb)
+
+
 def _ccc(pred: np.ndarray, true: np.ndarray) -> float:
     """Lin's concordance correlation coefficient (agreement, not just correlation).
 
@@ -261,6 +271,43 @@ def wss_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int
         "wss_ba_loa_low": ba["ba_loa_low"], "wss_ba_loa_high": ba["ba_loa_high"],
         "wss_ba_bias_pct": ba["ba_bias_pct"],
         "wss_pearson_r": _pearson(pm, true_mag), "wss_ccc": _ccc(pm, true_mag),
+    }
+
+
+def pressure_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                     phase: str, max_points: int = 20_000) -> Optional[Dict]:
+    """Wall-pressure pattern agreement (D1/D2).
+
+    The CFX/Fluent pressure datum is arbitrary and exported wall-only, so only the
+    spatial pattern is meaningful: both fields are mean-removed and compared by rank
+    (Spearman) and linear (Pearson) correlation plus a robust ``(q0.99-q0.01)`` range
+    ratio. Absolute pressure is deliberately not scored.
+    """
+    rec = cases_by_id(records)[case_id]
+    df = load_points(rec, "WSS", phase)
+    if df is None or "p" not in df.columns:
+        return None
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+    true_p = df["p"].to_numpy(float)
+    beta = rec.beta if rec.beta is not None else 1.0
+    pred_p = predict_physical(model, coords, rec.inlet_diameter_cm, rec.disease_flag,
+                              phase, beta=beta)["p"]
+    tp = true_p - true_p.mean()
+    pp = pred_p - pred_p.mean()
+
+    def _range(x: np.ndarray) -> float:
+        return float(np.quantile(x, 0.99) - np.quantile(x, 0.01))
+
+    rng_cfd, rng_pinn = _range(true_p), _range(pred_p)
+    return {
+        "case": case_id, "phase": phase, "n_points": int(len(df)),
+        "dp_pearson_r": _pearson(pp, tp),
+        "dp_spearman_r": _spearman(pp, tp),
+        "dp_rel_l2": _rel_l2(pp, tp),
+        "dp_range_cfd": rng_cfd, "dp_range_pinn": rng_pinn,
+        "dp_range_ratio": (rng_pinn / rng_cfd) if rng_cfd > 1e-9 else float("nan"),
     }
 
 

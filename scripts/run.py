@@ -148,7 +148,8 @@ def main() -> None:
 
     # ---- load trained model ----
     from idealaorta_pinn.analysis.predict import load_trained
-    from idealaorta_pinn.analysis.metrics import velocity_metrics, wss_metrics, write_report
+    from idealaorta_pinn.analysis.metrics import (velocity_metrics, wss_metrics,
+                                                   pressure_metrics, write_report)
     model = load_trained(out_dir / "best_model.pt", device=args.device)
     records = load_registry()
     by_id = cases_by_id(records)
@@ -156,7 +157,7 @@ def main() -> None:
     phases = args.phases or list(cfg["data"].get("phases", ["systolic", "diastolic"]))
 
     # ---- validate ----
-    vel_rows, wss_rows = [], []
+    vel_rows, wss_rows, pressure_rows = [], [], []
     for cid in cases:
         for ph in phases:
             vm = velocity_metrics(model, records, cid, ph, kind=args.val_kind)
@@ -167,9 +168,15 @@ def main() -> None:
             if wm:
                 wm["diameter_cm"] = by_id[cid].inlet_diameter_cm
                 wss_rows.append(wm)
+            pr = pressure_metrics(model, records, cid, ph)
+            if pr:
+                pr["diameter_cm"] = by_id[cid].inlet_diameter_cm
+                pressure_rows.append(pr)
     write_report(vel_rows, "velocity", f"{name}: velocity error ({args.val_kind})",
                  out_dir=metrics_dir)
     write_report(wss_rows, "wss", f"{name}: WSS error", out_dir=metrics_dir)
+    write_report(pressure_rows, "pressure", f"{name}: wall-pressure pattern",
+                 out_dir=metrics_dir)
 
     print(f"\n=== {name}: velocity vs CFD ({args.val_kind}) ===")
     for r in vel_rows:
