@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -35,6 +36,16 @@ def _pearson(pred: np.ndarray, true: np.ndarray) -> float:
     if sa < 1e-12 or sb < 1e-12:
         return float("nan")
     return float(np.mean((a - a.mean()) * (b - b.mean())) / (sa * sb))
+
+
+def _spearman(pred: np.ndarray, true: np.ndarray) -> float:
+    """Spearman rank correlation (Pearson of ranks); NaN for <2 points."""
+    a, b = np.asarray(pred, float).ravel(), np.asarray(true, float).ravel()
+    if a.size < 2:
+        return float("nan")
+    ra = np.argsort(np.argsort(a)).astype(float)
+    rb = np.argsort(np.argsort(b)).astype(float)
+    return _pearson(ra, rb)
 
 
 def _ccc(pred: np.ndarray, true: np.ndarray) -> float:
@@ -88,11 +99,15 @@ def recirculation_fraction(uvw: np.ndarray, direction: Optional[np.ndarray] = No
       * ``direction`` is supplied (the CFD-derived axis) so the SAME reference is
         used for both CFD and PINN, making the two fractions directly comparable;
         a per-field mean direction would shift between them.
+
+    Returns NaN when no sample clears ``speed_floor``: there is then no flow to take
+    a fraction of, and NaN keeps "no data" distinguishable from a measured 0.0 ("flow
+    present, none of it reversed").
     """
     speed = np.linalg.norm(uvw, axis=1)
     mask = speed > speed_floor
     if not mask.any():
-        return 0.0
+        return float("nan")
     v = uvw[mask]
     d = _dominant_direction(v) if direction is None else np.asarray(direction, float)
     return float(np.mean(v @ d < 0.0))
@@ -108,12 +123,15 @@ def secondary_flow_fraction(uvw: np.ndarray, direction: Optional[np.ndarray] = N
     computed identically -- and therefore comparably -- on scattered CFD samples and
     PINN predictions. Supply the SAME CFD-derived ``direction`` to both fields (as
     ``recirculation_fraction`` does) so the two fractions are directly comparable.
+
+    Returns NaN when no sample clears ``speed_floor`` (no flow to characterize), so
+    "no data" stays distinguishable from a measured 0.0 (purely axial flow).
     """
     uvw = np.asarray(uvw, float)
     speed = np.linalg.norm(uvw, axis=1)
     mask = speed > speed_floor
     if not mask.any():
-        return 0.0
+        return float("nan")
     v = uvw[mask]
     s = speed[mask]
     d = _dominant_direction(v) if direction is None else np.asarray(direction, float)
@@ -178,20 +196,33 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
         "div_rel": div["div_rel"],
         # M4: floor at 5% of the phase's own peak speed; reference direction from
         # the CFD field's significant-speed points, shared by both fractions.
-        **_flow_pair(true, pred_v, phase_u_ref),
+        # NaN on a degenerate slice (no CFD field to derive the axis/floor from).
+        **_flow_pair(true, pred_v, phase_u_ref, degenerate=degenerate),
         # Sac-masked recirc/swirl (diseased cases only): isolates the bulge so the
         # through-flow does not dilute the recirculation signal. NaN otherwise.
-        **_sac_flow_metrics(rec, phase, coords, true, pred_v, phase_u_ref),
+        **_sac_flow_metrics(rec, phase, coords, true, pred_v, phase_u_ref,
+                            degenerate=degenerate),
     }
 
 
 def _flow_pair(true: np.ndarray, pred: np.ndarray, phase_u_ref: float,
-               suffix: str = "") -> Dict[str, float]:
+               suffix: str = "", degenerate: bool = False) -> Dict[str, float]:
     """Recirculation + secondary-flow (swirl) fractions for CFD vs PINN.
 
     Both quantities use the SAME CFD-derived axis and speed floor for the two fields
     so they are directly comparable. ``suffix`` namespaces the keys (e.g. ``_sac``).
+
+    ``degenerate`` (a CFD slice with no resolved flow) yields NaN for all four keys,
+    exactly as the other CFD-comparison metrics do. Both the axis and the floor are
+    derived from the CFD field, so with no CFD field there is nothing to compare
+    against: the floor would collapse to ~5e-8, admitting pure noise, and the CFD
+    fractions would read a vacuous 0.0 against a fully-populated PINN fraction —
+    a large apparent disagreement that is an artifact of the empty slice, not physics.
     """
+    nan = float("nan")
+    if degenerate:
+        return {f"recirc_cfd{suffix}": nan, f"recirc_pinn{suffix}": nan,
+                f"swirl_cfd{suffix}": nan, f"swirl_pinn{suffix}": nan}
     floor = 0.05 * phase_u_ref
     true_speed = np.linalg.norm(true, axis=1)
     sig = true[true_speed > floor]
@@ -205,18 +236,20 @@ def _flow_pair(true: np.ndarray, pred: np.ndarray, phase_u_ref: float,
 
 
 def _sac_flow_metrics(rec: CaseRecord, phase: str, coords: np.ndarray, true: np.ndarray,
-                      pred: np.ndarray, phase_u_ref: float) -> Dict[str, float]:
+                      pred: np.ndarray, phase_u_ref: float,
+                      degenerate: bool = False) -> Dict[str, float]:
     """Recirc/swirl restricted to the saccular bulge band (diseased cases only).
 
     Locates the bulge from the wall point cloud (``sac_axial_band``) and keeps only
     the plane-slice points whose axial coordinate falls inside it. Healthy cases (no
-    interior bulge) and cases without a wall cloud / enough in-band points return NaN
-    so they neither claim a sac measurement nor wreck any aggregate.
+    interior bulge), cases without a wall cloud / enough in-band points, and
+    degenerate slices (no resolved CFD flow) return NaN so they neither claim a sac
+    measurement nor wreck any aggregate.
     """
     nan = float("nan")
     blank = {k: nan for k in ("recirc_cfd_sac", "recirc_pinn_sac",
                               "swirl_cfd_sac", "swirl_pinn_sac")}
-    if int(rec.disease_flag) != 1:
+    if degenerate or int(rec.disease_flag) != 1:
         return blank
     wall = load_points(rec, "WSS", phase)
     if wall is None or not {"x", "y", "z"}.issubset(wall.columns):
@@ -226,7 +259,8 @@ def _sac_flow_metrics(rec: CaseRecord, phase: str, coords: np.ndarray, true: np.
     in_band = (coords[:, ax] >= band["x_lo"]) & (coords[:, ax] <= band["x_hi"])
     if int(in_band.sum()) < 20:
         return blank
-    return _flow_pair(true[in_band], pred[in_band], phase_u_ref, suffix="_sac")
+    return _flow_pair(true[in_band], pred[in_band], phase_u_ref, suffix="_sac",
+                      degenerate=degenerate)
 
 
 def wss_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
@@ -264,12 +298,67 @@ def wss_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int
     }
 
 
+def pressure_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                     phase: str, max_points: int = 20_000) -> Optional[Dict]:
+    """Wall-pressure pattern agreement (D1/D2).
+
+    The CFX/Fluent pressure datum is arbitrary and exported wall-only, so only the
+    spatial pattern is meaningful: both fields are mean-removed and compared by rank
+    (Spearman) and linear (Pearson) correlation plus a robust ``(q0.99-q0.01)`` range
+    ratio. Absolute pressure is deliberately not scored.
+    """
+    rec = cases_by_id(records)[case_id]
+    df = load_points(rec, "WSS", phase)
+    if df is None or "p" not in df.columns:
+        return None
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+    true_p = df["p"].to_numpy(float)
+    beta = rec.beta if rec.beta is not None else 1.0
+    pred_p = predict_physical(model, coords, rec.inlet_diameter_cm, rec.disease_flag,
+                              phase, beta=beta)["p"]
+    tp = true_p - true_p.mean()
+    pp = pred_p - pred_p.mean()
+
+    def _range(x: np.ndarray) -> float:
+        return float(np.quantile(x, 0.99) - np.quantile(x, 0.01))
+
+    rng_cfd, rng_pinn = _range(true_p), _range(pred_p)
+    return {
+        "case": case_id, "phase": phase, "n_points": int(len(df)),
+        "dp_pearson_r": _pearson(pp, tp),
+        "dp_spearman_r": _spearman(pp, tp),
+        "dp_rel_l2": _rel_l2(pp, tp),
+        "dp_range_cfd": rng_cfd, "dp_range_pinn": rng_pinn,
+        "dp_range_ratio": (rng_pinn / rng_cfd) if rng_cfd > 1e-9 else float("nan"),
+    }
+
+
+def _json_safe(value):
+    """NaN/Inf -> None so the emitted file is valid JSON.
+
+    Non-finite floats are expected here (degenerate slices, healthy-case sac
+    metrics), but ``json.dumps`` would write the bare tokens ``NaN``/``Infinity``,
+    which Python reads back yet strict parsers (jq, JavaScript ``JSON.parse``)
+    reject. ``null`` round-trips to ``None``, which the readers already handle.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
+
+
 def write_report(rows: List[Dict], name: str, title: str = "", out_dir: Path = METRICS_DIR) -> Path:
-    """Write metrics to JSON + CSV + a human-readable TXT under ``out_dir``."""
+    """Write metrics to JSON + CSV + a human-readable TXT under ``out_dir``.
+
+    In the JSON, NaN/Inf are written as ``null`` (see ``_json_safe``); the CSV/TXT
+    keep their literal ``nan`` rendering for readability.
+    """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     rows = [r for r in rows if r is not None]
-    (out_dir / f"{name}.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+    safe = [{k: _json_safe(v) for k, v in r.items()} for r in rows]
+    (out_dir / f"{name}.json").write_text(json.dumps(safe, indent=2), encoding="utf-8")
 
     if rows:
         keys = list(rows[0].keys())

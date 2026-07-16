@@ -65,15 +65,26 @@ def _canonical_name(raw: str) -> Optional[str]:
 
 
 def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename raw CFD-Post columns to canonical names; drop unrecognized columns."""
-    rename: Dict[str, str] = {}
-    for col in df.columns:
+    """Rename raw CFD-Post columns to canonical names; drop unrecognized/duplicate columns.
+
+    Streamline exports can repeat the coordinate columns
+    (``X,Y,Z,Velocity,u,v,w,X,Y,Z``); we keep the FIRST column mapping to each
+    canonical name and select positionally, so duplicate raw labels never produce
+    duplicate ``x``/``y``/``z`` outputs (which would break ``df[["x","y","z"]]``).
+    """
+    seen: set[str] = set()
+    keep_pos: List[int] = []
+    names: List[str] = []
+    for pos, col in enumerate(df.columns):
         canon = _canonical_name(str(col))
-        if canon is not None:
-            rename[col] = canon
-    out = df.rename(columns=rename)
-    keep = [c for c in out.columns if c in {r[0] for r in _COLUMN_RULES}]
-    return out[keep]
+        if canon is None or canon in seen:
+            continue
+        seen.add(canon)
+        keep_pos.append(pos)
+        names.append(canon)
+    out = df.iloc[:, keep_pos].copy()
+    out.columns = names
+    return out
 
 
 def read_cfdpost_csv(path: str | Path, canonical: bool = True) -> pd.DataFrame:
@@ -109,12 +120,18 @@ def read_cfdpost_csv(path: str | Path, canonical: bool = True) -> pd.DataFrame:
             continue
         rows.append(parts)
 
-    df = pd.DataFrame(rows, columns=header)
-    for c in df.columns:
-        df[c] = pd.to_numeric(df[c], errors="coerce")
-    df = df.dropna(how="any").reset_index(drop=True)
-
-    return canonicalize_columns(df) if canonical else df
+    # Build positionally: a streamline export can repeat column NAMES
+    # (X,Y,Z,...,X,Y,Z), and per-label ``to_numeric`` would then receive a
+    # DataFrame (duplicate label) and raise. Integer columns sidestep that; the
+    # raw header names are reattached afterwards.
+    df = pd.DataFrame(rows)
+    df = df.apply(pd.to_numeric, errors="coerce").dropna(how="any").reset_index(drop=True)
+    df.columns = header
+    if not canonical:
+        return df
+    # Streamline exports emit each point twice; drop exact-duplicate rows so a
+    # validation/figure slice is not silently up-weighted by the duplication.
+    return canonicalize_columns(df).drop_duplicates().reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------

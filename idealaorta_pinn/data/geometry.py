@@ -78,7 +78,13 @@ def estimate_normals_open3d(points: np.ndarray, radius_mult: float = 3.0,
 
 
 def compute_wall_normals(points: np.ndarray, method: str = "auto", k: int = 16) -> np.ndarray:
-    """Compute inward unit normals; ``method`` in {'auto','open3d','pca'}."""
+    """Compute inward unit normals; ``method`` in {'auto','open3d','pca'}.
+
+    ``auto`` uses Open3D when it is importable and falls back to PCA otherwise.
+    Note ``k`` (PCA neighbourhood size) applies to the PCA path ONLY — the Open3D
+    path uses its own radius/max-nn heuristics, so tuning ``k`` has no effect
+    unless you also force ``method='pca'``.
+    """
     if method == "pca" or (method == "auto" and not _HAS_OPEN3D):
         return estimate_normals_pca(points, k=k)
     return estimate_normals_open3d(points)

@@ -16,7 +16,13 @@ with ``Re = rho * U_ref * L / mu`` and ``nu_t_s = nu_t / (U_ref * L)`` the
 non-dimensional eddy viscosity output by the nut network. For incompressible
 flow the viscous term expands to
 
-    (1/Re + nu_t_s) * laplacian_s(u_{s,i}) + grad_s(nu_t_s) . strain_i .
+    (1/Re + nu_t_s) * laplacian_s(u_{s,i})
+        + grad_s(nu_t_s) . (grad_s u_s + grad_s u_s^T)_i .
+
+Note the second term contracts the eddy-viscosity gradient with row ``i`` of the
+FULL tensor ``(grad_s u_s + grad_s u_s^T)`` — that is ``2 S_i``, twice the
+conventional strain-rate tensor ``S = (grad u + grad u^T) / 2``. The molecular
+part contributes no gradient term because ``1/Re`` is constant.
 
 The eddy-viscosity gradient is tracked (the nut field is smooth and learnable);
 this matches the SST k-omega-transition mean field the CFD produced without

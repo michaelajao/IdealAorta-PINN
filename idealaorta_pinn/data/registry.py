@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ..config import RAW_DIR, REGISTRY_PATH, load_cases, load_constants
+from ..config import PROJECT_ROOT, RAW_DIR, REGISTRY_PATH, load_cases, load_constants
 from .cfdpost import detect_data_kind, normalize_phase, parse_time_seconds
 
 _CASE_ID_RE = re.compile(r"case\s+(\d+)", re.IGNORECASE)
@@ -27,7 +27,7 @@ _HEALTHY_RE = re.compile(r"inlet\s+h\b|healthy", re.IGNORECASE)
 class DataFile:
     kind: str            # '3D' | 'XY' | 'XZ' | 'WSS'
     phase: str           # 'systolic' | 'diastolic'
-    path: str            # absolute path
+    path: str            # repo-root-relative, POSIX-style (see CaseRecord.get_file)
     time_s: Optional[float]
 
 
@@ -39,7 +39,7 @@ class CaseRecord:
     health: str          # 'diseased' | 'healthy'
     symmetry: str        # 'axisymmetric' | 'anterior' | 'posterior' | 'healthy'
     beta: Optional[float]
-    aneurysm_diameter_cm: float
+    aneurysm_diameter_cm: Optional[float]   # None for healthy cases (no bulge)
     # kind -> phase -> DataFile (stored as plain dicts for JSON round-trip)
     files: Dict[str, Dict[str, dict]] = field(default_factory=dict)
 
@@ -51,8 +51,18 @@ class CaseRecord:
         return {kind: sorted(phases.keys()) for kind, phases in self.files.items()}
 
     def get_file(self, kind: str, phase: str) -> Optional[Path]:
+        """Absolute path to a case's CSV export, or None if that (kind, phase) is absent.
+
+        Registry paths are stored relative to the repository root (see
+        ``_discover_files``) so ``data/registry.json`` stays portable across
+        machines; they are resolved against ``PROJECT_ROOT`` here. Absolute paths
+        are honoured as-is, so registries written by older versions still load.
+        """
         entry = self.files.get(kind, {}).get(phase)
-        return Path(entry["path"]) if entry else None
+        if not entry:
+            return None
+        p = Path(entry["path"])
+        return p if p.is_absolute() else (PROJECT_ROOT / p)
 
 
 def _classify_symmetry(folder_low: str, health: str) -> str:
@@ -88,6 +98,20 @@ def _find_pinns_dir(case_dir: Path) -> Optional[Path]:
     return None
 
 
+def _rel_to_root(path: Path) -> str:
+    """Path relative to the repo root, POSIX-style; absolute if outside the repo.
+
+    Keeps ``data/registry.json`` portable: it is shared/version-controlled, so it
+    must not bake in one machine's absolute paths (or username). Forward slashes
+    are used on every platform; ``Path`` accepts them on Windows too.
+    """
+    p = path.resolve()
+    try:
+        return p.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return str(p)          # data kept outside the repo: absolute is the only option
+
+
 def _discover_files(pinns_dir: Path) -> Dict[str, Dict[str, dict]]:
     """Classify every CSV in a PINNS folder by (kind, phase)."""
     files: Dict[str, Dict[str, dict]] = {}
@@ -97,7 +121,7 @@ def _discover_files(pinns_dir: Path) -> Dict[str, Dict[str, dict]]:
         if kind == "unknown" or phase == "unknown":
             continue
         files.setdefault(kind, {})[phase] = asdict(
-            DataFile(kind=kind, phase=phase, path=str(csv.resolve()),
+            DataFile(kind=kind, phase=phase, path=_rel_to_root(csv),
                      time_s=parse_time_seconds(csv.name))
         )
     return files
@@ -132,7 +156,10 @@ def discover_cases(root: Path = RAW_DIR) -> List[CaseRecord]:
             health=parsed["health"],
             symmetry=parsed["symmetry"],
             beta=beta_by_symmetry.get(parsed["symmetry"]),
-            aneurysm_diameter_cm=aneurysm_cm,
+            # The 4.0 cm saccular bulge exists on diseased geometries only; healthy
+            # cases are a smooth taper, so they carry no aneurysm diameter (None),
+            # mirroring how `beta` resolves to null for them.
+            aneurysm_diameter_cm=(aneurysm_cm if parsed["health"] == "diseased" else None),
             files=files,
         )
 

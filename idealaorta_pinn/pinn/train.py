@@ -528,8 +528,14 @@ class Trainer:
                 # Show ALL raw component losses (not just a subset) so training is
                 # fully observable; loss_history.csv stores the same columns.
                 comp = "  ".join(f"{c[:4]}={losses[c]:.2e}" for c in COMPONENTS)
+                # Cumulative throughput + ETA: gives an honest wall-clock estimate
+                # for the run (used for the CFD-vs-surrogate timing comparison).
+                done = epoch - self.start_epoch
+                eps = done / max(time.time() - t0, 1e-9)
+                eta_min = (epochs - epoch) / eps / 60.0 if eps > 0 else float("nan")
                 msg = (f"  ep {epoch:>6} lr={self.opt.param_groups[0]['lr']:.1e} "
-                       f"total={losses['total']:.3e}  {comp}  monitor={monitor:.4f}")
+                       f"total={losses['total']:.3e}  {comp}  monitor={monitor:.4f}"
+                       f"  [{eps:.1f} ep/s, ETA {eta_min:.1f} min]")
                 if holdout_metric is not None:
                     msg += f"  holdout_relL2={holdout_metric:.4f}"
                 print(msg)
@@ -603,6 +609,24 @@ class Trainer:
             print(f"[trainer] resume requested but no {path.name}; starting fresh.")
             return
         state = torch.load(path, map_location=self.device, weights_only=False)
+        # Guard against resurrecting an incompatible (e.g. historically leaky) run:
+        # the sidecar carries the config it was written under. Refuse to continue if
+        # the supervision sources or the training case list differ from the current
+        # config, since that would restore weights/optimizer state trained on a
+        # different data regime (e.g. XY+XZ plane-supervised) into a clean run.
+        saved_data = (state.get("config") or {}).get("data", {})
+        cur_data = self.cfg.get("data", {})
+        saved_fp = (tuple(saved_data.get("velocity_kinds", ["3D"])),
+                    tuple(saved_data.get("train_cases", [])))
+        cur_fp = (tuple(cur_data.get("velocity_kinds", ["3D"])),
+                  tuple(cur_data.get("train_cases", [])))
+        if saved_fp != cur_fp:
+            raise RuntimeError(
+                f"refusing to resume from {path.name}: it was written with "
+                f"velocity_kinds={saved_fp[0]} train_cases={saved_fp[1]}, but the "
+                f"current config has velocity_kinds={cur_fp[0]} "
+                f"train_cases={cur_fp[1]}. Delete the stale resume_state.pt or run "
+                f"with a matching config.")
         for k, n in self.networks.items():
             n.load_state_dict(state["networks"][k])
         self.opt.load_state_dict(state["opt"])

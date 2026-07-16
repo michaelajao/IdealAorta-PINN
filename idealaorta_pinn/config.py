@@ -2,8 +2,8 @@
 
 Everything that needs a filesystem path goes through here so that no other
 module hardcodes folder names. The raw CFD case folders live under
-``data/raw/`` after migration; nothing downstream depends on their (messy)
-original names because discovery is done by the case registry.
+``data/raw/``; nothing downstream depends on their (messy) original names
+because discovery is done by the case registry.
 """
 
 from __future__ import annotations
@@ -39,18 +39,6 @@ LOGS_DIR: Path = REPORT_DIR / "logs"                # run logs, one subfolder pe
 # Manuscript: LaTeX fragments, bibliography, and a copy of the figures used.
 PAPER_DIR: Path = PROJECT_ROOT / "paper"
 PAPER_FIGURES_DIR: Path = PAPER_DIR / "figures"
-
-# The original spreadsheet of slice-averaged CFD results (independent validation).
-# Migrated into data/raw/ alongside the case folders.
-RESULTS_SLICES_XLSX: Path = RAW_DIR / "Results on Slices.xlsx"
-
-# Default external location of the raw CFD exports prior to migration.
-# `scripts/00_migrate_data.py` moves the 12 ``Case *`` folders from here into
-# ``data/raw/``. Override on the command line with ``--source`` if it differs.
-DEFAULT_DATA_SOURCE: Path = Path(
-    r"c:\Users\ajaoo\Downloads\Idealised Geometry Results\Idealised Geometry Results"
-)
-
 
 def ensure_output_dirs() -> None:
     """Create the standard model/report/paper directories if they do not exist."""
@@ -103,9 +91,13 @@ def fluid_properties() -> FluidProperties:
 class Waveform:
     """Pulsatile inlet flow-rate waveform Q(t) from the manuscript.
 
-    Q(t) = Q_max * sin(pi (t - 0.5 n T) / w) + Q_base  during the systolic pulse,
-         = Q_base                                       during diastole,
-    with Q_base = Q_base_fraction * Q_max and w = systolic_pulse_width.
+    One systolic pulse per cardiac period ``T``, with baseline flow through diastole::
+
+        Q(t) = Q_max * sin(pi (t - nT) / w) + Q_base,   nT <= t <= nT + w
+             = Q_base,                                  nT + w <  t <= (n+1) T
+
+    where ``n = floor(t / T)``, ``Q_base = Q_base_fraction * Q_max`` and
+    ``w = systolic_pulse_width``.
     """
 
     Q_max: float
@@ -119,8 +111,8 @@ class Waveform:
 
     def flow_rate(self, t: float) -> float:
         """Instantaneous flow rate Q(t) (m^3/s) for absolute time ``t`` (s)."""
-        n = math.floor(t / (0.5 * self.T))
-        t_local = t - 0.5 * n * self.T
+        n = math.floor(t / self.T)
+        t_local = t - n * self.T
         if 0.0 <= t_local <= self.pulse_width:
             return self.Q_max * math.sin(math.pi * t_local / self.pulse_width) + self.Q_base
         return self.Q_base

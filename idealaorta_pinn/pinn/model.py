@@ -21,7 +21,7 @@ the parameters index a geometry family, not an oscillatory field.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -35,9 +35,11 @@ class Swish(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    """Pre-activation residual block: x -> Linear -> Swish -> Linear -> (+x).
+    """Residual block: x -> Linear -> Swish -> Linear -> (+x).
 
-    No activation after the skip-add (preserves gradient flow for the Laplacian).
+    Deliberately no activation *after* the skip-add: the physics residuals take
+    second derivatives of this network, so keeping the skip path linear preserves
+    gradient flow for the Laplacian.
     """
 
     def __init__(self, dim: int):
@@ -74,12 +76,19 @@ class FourierFeatures(nn.Module):
         return torch.cat([torch.sin(proj), torch.cos(proj)], dim=-1)
 
 
-def _mlp(in_dim: int, hidden: List[int], activation: nn.Module = None) -> nn.Sequential:
-    act = activation or Swish()
+def _mlp(in_dim: int, hidden: List[int],
+         activation: Optional[Callable[[], nn.Module]] = None) -> nn.Sequential:
+    """Plain ``Linear -> activation`` stack (no output layer; callers append theirs).
+
+    ``activation`` is a *factory* (e.g. ``Swish`` or ``lambda: nn.LeakyReLU(0.2)``),
+    not an instance: each layer needs its own module, and taking a factory keeps any
+    configured hyperparameters instead of silently reconstructing a bare default.
+    """
+    make_act = activation or Swish
     layers: List[nn.Module] = []
     prev = in_dim
     for h in hidden:
-        layers += [nn.Linear(prev, h), type(act)()]
+        layers += [nn.Linear(prev, h), make_act()]
         prev = h
     return nn.Sequential(*layers)
 

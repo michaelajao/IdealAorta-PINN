@@ -2,7 +2,8 @@
 # Discipline check for the combined fix: do S2 (volumetric collocation) + S4
 # (anisotropic Fourier) improve the IN-SAMPLE systolic field (peak over-prediction
 # + speckle) on top of S1's diastolic fix? Compare vs stageA_case1_s1 (S1 only) and
-# stageA_case1 (baseline). Runs on GPU 0 alongside uvicorn (n_collocation trimmed).
+# stageA_case1 (baseline). Note: n_collocation is trimmed here to fit alongside
+# another job on the same GPU.
 
 experiment:
   name: stageA_case1_s124
