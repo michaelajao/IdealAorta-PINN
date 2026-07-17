@@ -1,7 +1,15 @@
+# SUPERSEDED — use configs/stageC_all12.yaml instead. Kept for provenance only.
+#
+# This config was never run: at 24 (case, phase) groups x 12000 velocity points it
+# needs on the order of 100+ GB (the trainer accumulates every group before one
+# backward), so it does not fit the 48 GB GPUs used here. Its 192-wide / 6-block
+# network also does not match the architecture reported in the manuscript.
+# stageC_all12.yaml is the runnable, paper-matching replacement.
+#
 # Stage C — full-study parametric surrogate over all 12 geometries.
 # One network conditioned on [d_inlet*, beta, disease_flag, phase] spans:
 #   - inlet diameter (2.0 / 2.3 / 2.6 cm),
-#   - asymmetry beta (1.0 axisymmetric, 2.08 anterior, 0.48 posterior),
+#   - asymmetry beta (1.0 axisymmetric, 0.48 anterior-dominant, 2.08 posterior-dominant),
 #   - disease vs healthy.
 # Per-group point counts are reduced because there are 12 cases x 2 phases = 24
 # (case, phase) groups; expect a substantially longer run than Stage A/B.

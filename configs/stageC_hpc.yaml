@@ -1,5 +1,11 @@
+# SUPERSEDED / ASPIRATIONAL — never run; see configs/stageC_all12.yaml for the
+# runnable full-study config. At 24 (case, phase) groups x 30000 velocity points
+# this needs far more than the 48 GB it claims below: the trainer accumulates every
+# group before a single backward, so peak memory scales with groups x per-group
+# points. Treat the "48 GB" note as untested.
+#
 # Stage C (HPC) — full-study parametric surrogate over all 12 geometries,
-# scaled for a large-memory GPU (~48 GB). Larger network, more frequencies,
+# scaled for a large-memory GPU. Larger network, more frequencies,
 # bigger parameter/coordinate encoders, more collocation, longer training.
 #
 # MEMORY NOTE: this stage has 12 cases x 2 phases = 24 (case, phase) groups, and

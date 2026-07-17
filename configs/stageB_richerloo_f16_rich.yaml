@@ -1,0 +1,90 @@
+# DIAGNOSTIC ARM of stageB_richerloo_f16 (leave-2.3cm-out), identical except for
+# supervision density: 10000 velocity points and 2000 collocation points per group
+# (vs 3000/500 in the base arm). Purpose: the base LODO arm is trained on ~3000 of
+# the ~11-30k available points per group, while the in-sample runs use ALL of theirs,
+# so the in-sample-vs-LODO gap confounds diameter extrapolation with supervision
+# density. This arm isolates that: if the held-out error is unchanged, the gap is
+# attributable to the three-diameter design; if it drops, it was partly data.
+# Report the outcome either way.
+# Richer leave-2.3cm-out (HEADLINE) — train on ALL diseased cases at 2.0 & 2.6 cm,
+# predict ALL three 2.3 cm cases. This is the stronger generalization claim than the
+# 2-case stageB_loo_2p3: the model now sees both training diameters across every
+# disease-symmetry class (axisym/anterior/posterior) and must interpolate the unseen
+# middle diameter for all three symmetries.
+#   train: cases 1,2,3 (2.0 cm) + 7,8,9 (2.6 cm)   [diseased]
+#   held-out (validate): cases 4,5,6 (2.3 cm, all symmetries)
+# Architecture = final stack: S1 per-phase scaling + S2 volumetric collocation,
+# isotropic Fourier (S4 dropped). This arm: num_frequencies=16 (best WSS in-sample).
+# Paired with stageB_richerloo_f12 (12 freq) to let the held-out result pick the
+# generalization-optimal bandwidth. Memory trimmed (6 train cases = 12 groups).
+
+experiment:
+  name: stageB_richerloo_f16_rich
+  description: "Richer LOO 2.3cm (train 1,2,3,7,8,9; hold 4,5,6). S1+S2 isotropic, 16 freq."
+
+random_seed: 42
+device: cuda
+output_dir: models/stageB_richerloo_f16_rich
+
+loss_balance:
+  per_phase_velocity_scale: true        # S1
+
+data:
+  train_cases: [1, 2, 3, 7, 8, 9]
+  phases: [systolic, diastolic]
+  velocity_kinds: ["3D"]
+
+model:
+  hidden_dim: 128
+  num_layers: 6
+  num_frequencies: 16
+  fourier_scale: 1.0
+  anisotropic_fourier: false            # S4 OFF
+  use_fourier: true
+  use_param_encoder: true
+  param_encoder_dims: [32, 32]
+  coord_encoder_dims: null
+  nut:
+    hidden_dim: 64
+    num_layers: 4
+    nu_t_min: 1.0e-3
+    initial_nut: 0.02
+    lr_multiplier: 10.0
+
+physics:
+  mu: 0.0035
+  rho: 1060.0
+  n_collocation: 2000                    # per group; 12 groups -> 24k total
+
+loss_weights:
+  velocity: 1.0
+  physics: 0.05
+  pressure: 1.0
+  wss: 1.0
+  noslip: 10.0
+  inlet: 1.0
+  outlet: 1.0
+
+adaptive_weights:
+  enabled: true
+  update_interval: 250
+  alpha: 0.9
+  ref: velocity
+  weight_cap: 50.0
+  physics_floor: 0.05
+
+training:
+  epochs: 18000
+  lr: 1.0e-4
+  scheduler: {type: CosineAnnealingLR, eta_min: 1.0e-6}
+  gradient_clip: 1.0
+  eval_interval: 250
+  save_interval: 1000
+  early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
+
+loaders:
+  max_velocity_points: 10000            # per group; 12 groups -> 120k total (~35 GB peak)
+  volumetric_collocation: true          # S2
+  wall_normals_method: auto
+  inlet_n_radial: 6
+  inlet_n_angular: 12
