@@ -671,6 +671,14 @@ def kfold_table(folds: Sequence[str], phases: Sequence[str] = PHASES,
     for d, exp in parsed:
         nature = "interp" if (mid is not None and abs(d - mid) < 1e-9) else "extrap"
         vel, wss = load_metric_file(exp, "velocity"), load_metric_file(exp, "wss")
+        # A fold's metric file may contain both the cases it trained on and the ones it
+        # held out (run.py tags each row). Only the held-out rows belong in a
+        # generalization table, so keep those whenever the tag is present; files written
+        # before the tag existed are used as-is rather than silently dropped.
+        held_keys = {k for k, r in vel.items() if r.get("regime") == "held-out"}
+        if held_keys:
+            vel = {k: r for k, r in vel.items() if k in held_keys}
+            wss = {k: r for k, r in wss.items() if k in held_keys}
         keys = sorted(set(vel) | set(wss), key=lambda k: (k[0], _PHASE_ORDER.get(k[1], 9)))
         fold_vel, fold_wss = [], []
         for case, phase in keys:

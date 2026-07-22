@@ -172,21 +172,20 @@ def main() -> None:
         print(f"[run] evaluating train cases {train_cases} + held-out {sorted(held_out)}")
 
     # ---- validate ----
+    # Every row carries its regime, so a consumer can never confuse a case the model
+    # trained on with one it was asked to generalize to (the k-fold table filters on it).
     vel_rows, wss_rows, pressure_rows = [], [], []
     for cid in cases:
+        regime = "in-sample" if cid in train_cases else "held-out"
         for ph in phases:
-            vm = velocity_metrics(model, records, cid, ph, kind=args.val_kind)
-            if vm:
-                vm["diameter_cm"] = by_id[cid].inlet_diameter_cm
-                vel_rows.append(vm)
-            wm = wss_metrics(model, records, cid, ph)
-            if wm:
-                wm["diameter_cm"] = by_id[cid].inlet_diameter_cm
-                wss_rows.append(wm)
-            pr = pressure_metrics(model, records, cid, ph)
-            if pr:
-                pr["diameter_cm"] = by_id[cid].inlet_diameter_cm
-                pressure_rows.append(pr)
+            for fn, sink in ((velocity_metrics, vel_rows), (wss_metrics, wss_rows),
+                             (pressure_metrics, pressure_rows)):
+                row = (fn(model, records, cid, ph, kind=args.val_kind)
+                       if fn is velocity_metrics else fn(model, records, cid, ph))
+                if row:
+                    row["diameter_cm"] = by_id[cid].inlet_diameter_cm
+                    row["regime"] = regime
+                    sink.append(row)
     write_report(vel_rows, "velocity", f"{name}: velocity error ({args.val_kind})",
                  out_dir=metrics_dir)
     write_report(wss_rows, "wss", f"{name}: WSS error", out_dir=metrics_dir)
