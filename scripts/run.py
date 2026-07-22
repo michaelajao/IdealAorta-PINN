@@ -153,8 +153,23 @@ def main() -> None:
     model = load_trained(out_dir / "best_model.pt", device=args.device)
     records = load_registry()
     by_id = cases_by_id(records)
-    cases = args.cases or list(cfg["data"]["train_cases"])
+    # Which cases to evaluate. Explicit --cases always wins. Otherwise: for a fit that
+    # trains on a SUBSET of the diseased set (a leave-one-diameter-out fold), the
+    # interesting number is the HELD-OUT case, not the training case -- reporting only
+    # the training cases would silently produce an in-sample table for a generalization
+    # run. So we evaluate the training cases AND whatever diseased cases the fold left
+    # out, and tag each row with its regime. A fit that already covers everything it
+    # could be tested on (in-sample, or the full 12) is unaffected.
+    train_cases = list(cfg["data"]["train_cases"])
+    if args.cases:
+        cases, held_out = list(args.cases), set()
+    else:
+        diseased = [c.case_id for c in records if c.disease_flag == 1]
+        held_out = set(diseased) - set(train_cases)
+        cases = train_cases + sorted(held_out)
     phases = args.phases or list(cfg["data"].get("phases", ["systolic", "diastolic"]))
+    if held_out:
+        print(f"[run] evaluating train cases {train_cases} + held-out {sorted(held_out)}")
 
     # ---- validate ----
     vel_rows, wss_rows, pressure_rows = [], [], []

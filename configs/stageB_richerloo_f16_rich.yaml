@@ -54,7 +54,12 @@ model:
 physics:
   mu: 0.0035
   rho: 1060.0
-  n_collocation: 2000                    # per group; 12 groups -> 24k total
+  # HELD AT THE BASELINE FOLD'S VALUE ON PURPOSE. Collocation points carry second
+  # derivatives (Laplacian) through the graph, so they dominate peak memory; the first
+  # attempt at 2000/group OOM'd. Keeping this identical to stageB_richerloo_f16 makes
+  # velocity supervision the ONLY variable that differs between the two runs, which is
+  # what the diagnostic is for.
+  n_collocation: 500                     # per group; 12 groups -> 6k total (same as baseline)
 
 loss_weights:
   velocity: 1.0
@@ -83,7 +88,11 @@ training:
   early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
 
 loaders:
-  max_velocity_points: 10000            # per group; 12 groups -> 120k total (~35 GB peak)
+  # 3x the baseline fold's 3000. Velocity samples enter the data term without second
+  # derivatives, so they are far cheaper per point than collocation and this is where
+  # the extra budget is spent. 10000 was tried first and OOM'd together with the 2000
+  # collocation points above.
+  max_velocity_points: 9000             # per group; 12 groups -> 108k total
   volumetric_collocation: true          # S2
   wall_normals_method: auto
   inlet_n_radial: 6

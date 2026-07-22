@@ -61,7 +61,11 @@ model:
 physics:
   mu: 0.0035
   rho: 1060.0
-  n_collocation: 1000                   # per group; 24 groups -> 24k total
+  # 24 groups is twice the group count of the leave-one-diameter-out folds, and the
+  # trainer accumulates every group before one backward, so the per-group counts are
+  # halved relative to those folds to land on the same TOTAL point budget that is known
+  # to fit (36k velocity + 6k collocation). The first attempt (4000/1000) OOM'd.
+  n_collocation: 250                    # per group; 24 groups -> 6k total
 
 loss_weights:
   velocity: 1.0
@@ -90,7 +94,7 @@ training:
   early_stopping: {enabled: true, patience: 2000, min_delta: 1.0e-5}
 
 loaders:
-  max_velocity_points: 4000             # per group; 24 groups -> 96k total (~35 GB peak)
+  max_velocity_points: 1500             # per group; 24 groups -> 36k total
   volumetric_collocation: true
   wall_normals_method: auto
   inlet_n_radial: 6

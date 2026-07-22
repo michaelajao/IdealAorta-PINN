@@ -103,15 +103,13 @@ idealaorta_pinn/
     train.py               # Trainer: optimization loop, loss balancing, checkpointing
   analysis/
     predict.py            # load a trained checkpoint, predict in physical units
-    metrics.py              # velocity/WSS/pressure error metrics vs CFD
+    metrics.py              # error metrics vs CFD; cross-run evaluation + LODO table
     figures.py               # static (matplotlib) + interactive (Plotly 3D) figures
 
 scripts/
   prepare.py              # registry / cache subcommands (data pipeline)
   run.py                  # train + validate + figures for one config (the main entry point)
-  harvest_metrics.py       # re-harvest metrics from saved checkpoints (no retraining)
-  make_error_vs_diameter.py  # LODO error-vs-diameter summary figure across folds
-  make_kfold_table.py       # LODO k-fold generalization table (Markdown/CSV/LaTeX)
+  report.py               # post-training: evaluate / kfold-table / error-vs-diameter
 
 configs/                  # one YAML per experiment (stageA_* de-risking, stageB_* LODO
                            # folds, stageC_* full study), plus cases.yaml / constants.yaml
@@ -145,10 +143,10 @@ python scripts/run.py --config configs/stageA_case1.yaml                       #
 python scripts/run.py --config configs/stageB_richerloo_f16.yaml --cases 4 5 6 # Stage B: predict unseen 2.3 cm (LODO)
 python scripts/run.py --config configs/stageA_case1.yaml --skip-train          # re-validate/plot an existing model
 
-# 3) post-processing across multiple trained runs (no GPU / retraining required)
-python scripts/harvest_metrics.py                                              # re-harvest metrics from checkpoints
-python scripts/make_error_vs_diameter.py --folds 2.0:stageB_kfold_hold2p0 2.3:stageB_richerloo_f16 2.6:stageB_kfold_hold2p6 --insample stageA_case1_s12
-python scripts/make_kfold_table.py --folds 2.0:stageB_kfold_hold2p0 2.3:stageB_richerloo_f16 2.6:stageB_kfold_hold2p6
+# 3) post-processing across multiple trained runs (no retraining; --device cpu works)
+python scripts/report.py evaluate            # score every trained run vs CFD -> report/metrics/all_runs.json
+python scripts/report.py kfold-table         # LODO generalization table -> report/tables/ (md + csv + tex)
+python scripts/report.py error-vs-diameter   # held-out error vs in-sample floor -> report/figures/
 ```
 
 Outputs land in experiment-scoped folders: `models/<experiment>/` for checkpoints and training

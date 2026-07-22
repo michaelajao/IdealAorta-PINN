@@ -16,11 +16,11 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 import torch
 
-from ..config import METRICS_DIR
+from ..config import METRICS_DIR, MODELS_DIR, PROJECT_ROOT, TABLES_DIR
 from ..data.cache import load_points
 from ..data.geometry import compute_wall_normals, sac_axial_band
-from ..data.registry import CaseRecord, cases_by_id
-from .predict import TrainedModel, _phase_value, predict_physical
+from ..data.registry import CaseRecord, cases_by_id, load_registry
+from .predict import TrainedModel, _phase_value, load_trained, predict_physical
 
 
 def _rel_l2(pred: np.ndarray, true: np.ndarray) -> float:
@@ -486,3 +486,266 @@ def predicted_divergence(model: TrainedModel, coords_phys: np.ndarray, diameter_
         "div_mean_abs": float(div_abs / n),
         "div_rel": float(div_rms / (grad_rms + 1e-12)),
     }
+
+
+# ---------------------------------------------------------------------------
+# Cross-run reporting: evaluate every trained checkpoint, and the LODO table
+# ---------------------------------------------------------------------------
+# Both are pure post-processing over runs that already exist (the evaluation reloads
+# checkpoints for inference; the table reads only JSON). Driven by scripts/report.py.
+#
+# A caveat that governs the LODO table: each fold fits its own train-set
+# nondimensionalization, so only scale-free errors (NRMSE, relative L2, ratios) are
+# comparable across folds. Never average 2.0/2.3/2.6 into a single "generalization"
+# number -- 2.3 cm interpolates between the training diameters while 2.0 and 2.6 cm
+# extrapolate past a single bracketing one, and they behave differently.
+
+PHASES = ("systolic", "diastolic")
+
+_SYM = {"axisymmetric": "axisym.", "anterior": "anterior", "posterior": "posterior",
+        "healthy": "healthy"}
+_PHASE_ORDER = {"systolic": 0, "diastolic": 1}
+
+# A run may sit directly under models/<name>/ (the default output_dir) or be filed into
+# a models/<group>/<name>/ subfolder once a sweep is grouped; check both.
+_MODEL_SUBDIRS = ("", "_insample", "_ablation", "_seedsweep")
+
+# (label, experiment name, [cases], regime, config that produces the checkpoint)
+# In-sample rows are the per-case reconstruction floor; LODO rows are the three
+# leave-one-diameter-out folds, each evaluated on the cases its fold held out.
+REPORTED_RUNS = [
+    ("insample_c1", "stageA_case1_s12", [1], "in-sample", "configs/stageA_case1_s12.yaml"),
+    ("insample_c2", "stageA_case2_insample", [2], "in-sample", "configs/stageA_case2_insample.yaml"),
+    ("insample_c3", "stageA_case3_insample", [3], "in-sample", "configs/stageA_case3_insample.yaml"),
+    ("insample_c4", "stageA_case4_insample", [4], "in-sample", "configs/stageA_case4_insample.yaml"),
+    ("insample_c7", "stageA_case7_insample", [7], "in-sample", "configs/stageA_case7_insample.yaml"),
+    ("lodo_2.0", "stageB_kfold_hold2p0", [1, 2, 3], "LODO-2.0", "configs/stageB_kfold_hold2p0.yaml"),
+    ("lodo_2.3", "stageB_richerloo_f16", [4, 5, 6], "LODO-2.3", "configs/stageB_richerloo_f16.yaml"),
+    ("lodo_2.6", "stageB_kfold_hold2p6", [7, 8, 9], "LODO-2.6", "configs/stageB_kfold_hold2p6.yaml"),
+]
+
+
+def find_checkpoint(name: str, filename: str = "best_model.pt") -> Optional[Path]:
+    """Locate a run's checkpoint by experiment name, searching the known groupings."""
+    for sub in _MODEL_SUBDIRS:
+        base = (MODELS_DIR / sub / name) if sub else (MODELS_DIR / name)
+        ck = base / filename
+        if ck.exists():
+            return ck
+    return None
+
+
+def _is_num(x) -> bool:
+    return isinstance(x, (int, float)) and not (isinstance(x, float) and math.isnan(x))
+
+
+def _mean_of(xs) -> float:
+    v = [x for x in xs if _is_num(x)]
+    return sum(v) / len(v) if v else float("nan")
+
+
+def _fmt(x, p: int = 3) -> str:
+    """Format a metric for display; missing/NaN renders as an em dash."""
+    if x is None or (isinstance(x, float) and math.isnan(x)):
+        return "—"
+    return f"{x:.{p}f}" if isinstance(x, (int, float)) else str(x)
+
+
+def load_metric_file(exp: str, kind: str) -> Dict:
+    """Read ``report/metrics/<exp>/<kind>.json`` keyed by (case, phase); {} if absent."""
+    p = METRICS_DIR / exp / f"{kind}.json"
+    if not p.exists():
+        return {}
+    return {(r["case"], r["phase"]): r for r in json.loads(p.read_text())}
+
+
+def _fold_mean(exp: str, kind: str, key: str) -> float:
+    """Mean of one metric over every row of one experiment's metric file."""
+    p = METRICS_DIR / exp / f"{kind}.json"
+    if not p.exists():
+        return float("nan")
+    return _mean_of(r.get(key) for r in json.loads(p.read_text()))
+
+
+def parse_folds(specs: Sequence[str]) -> List:
+    """Parse ``"2.3:experiment_name"`` fold specs into (held_diameter_cm, experiment)."""
+    out = []
+    for spec in specs:
+        d, _, exp = spec.partition(":")
+        if not exp:
+            raise ValueError(f"bad fold spec {spec!r}; expected 'held_cm:experiment'")
+        out.append((float(d), exp))
+    return out
+
+
+def interp_diameter(diams: Sequence[float]) -> Optional[float]:
+    """The interpolated (middle) diameter, or None when the folds do not bracket one."""
+    return sorted(diams)[len(diams) // 2] if len(diams) >= 3 else None
+
+
+def _g(d: Optional[Dict], k: str):
+    return d.get(k) if d else None
+
+
+def _f6(x) -> str:
+    if x is None:
+        return "  --  "
+    try:
+        if x != x:  # NaN
+            return "  nan "
+        return f"{x:6.3f}"
+    except (TypeError, ValueError):
+        return str(x)
+
+
+def evaluate_runs(runs: Optional[Sequence[str]] = None, device: str = "cuda",
+                  out: Optional[Path] = None) -> Path:
+    """Evaluate every reported run against CFD, straight from its saved checkpoint.
+
+    Recomputes the velocity, WSS, pressure and continuity metrics for each
+    (run, case, phase) and writes them as one JSON table, so the numbers quoted in
+    the paper can be regenerated in a single command without retraining.
+
+    Inference only -- no training. A run whose checkpoint does not exist yet is
+    reported as ``[skip]`` with the config that would produce it, rather than
+    failing the whole batch.
+    """
+    selected = REPORTED_RUNS if not runs else [r for r in REPORTED_RUNS if r[0] in set(runs)]
+    records = load_registry()
+    rows: List[Dict] = []
+    for label, name, cases, regime, cfg_path in selected:
+        ck = find_checkpoint(name)
+        if ck is None:
+            print(f"[skip] {label}: no checkpoint for '{name}' under {MODELS_DIR}. "
+                  f"Train it first:  python scripts/run.py --config {cfg_path}")
+            continue
+        model = load_trained(ck, device=device)
+        for cid in cases:
+            for ph in PHASES:
+                vm = velocity_metrics(model, records, cid, ph, kind="XZ")
+                wm = wss_metrics(model, records, cid, ph)
+                pm = pressure_metrics(model, records, cid, ph)
+                peak_ratio = None
+                if wm and wm["wss_peak_cfd"] > 1e-9:
+                    peak_ratio = wm["wss_peak_pinn"] / wm["wss_peak_cfd"]
+                rows.append({
+                    "label": label, "regime": regime, "case": cid, "phase": ph,
+                    "vel_nrmse_phase": _g(vm, "vel_nrmse_phase"),
+                    "vel_rel_l2": _g(vm, "vel_rel_l2"),
+                    "div_rel": _g(vm, "div_rel"), "div_rms": _g(vm, "div_rms"),
+                    "recirc_cfd": _g(vm, "recirc_cfd"), "recirc_pinn": _g(vm, "recirc_pinn"),
+                    "wss_nrmse": _g(wm, "wss_nrmse"), "wss_rel_l2": _g(wm, "wss_rel_l2"),
+                    "wss_peak_cfd": _g(wm, "wss_peak_cfd"), "wss_peak_pinn": _g(wm, "wss_peak_pinn"),
+                    "wss_peak_ratio": peak_ratio, "wss_pearson_r": _g(wm, "wss_pearson_r"),
+                    "dp_pearson_r": _g(pm, "dp_pearson_r"), "dp_spearman_r": _g(pm, "dp_spearman_r"),
+                    "dp_range_ratio": _g(pm, "dp_range_ratio"),
+                })
+                r = rows[-1]
+                print(f"{label:12s} c{cid} {ph:9s} "
+                      f"velNRMSE={_f6(r['vel_nrmse_phase'])} div_rel={_f6(r['div_rel'])} "
+                      f"wssNRMSE={_f6(r['wss_nrmse'])} peakR={_f6(r['wss_peak_ratio'])} "
+                      f"dp_r={_f6(r['dp_pearson_r'])} dp_range={_f6(r['dp_range_ratio'])}")
+
+    out = Path(out) if out is not None else (METRICS_DIR / "all_runs.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps([{k: _json_safe(v) for k, v in r.items()} for r in rows],
+                              indent=2), encoding="utf-8")
+    print(f"\n[evaluate] wrote {out}  ({len(rows)} rows)")
+    return out
+
+
+def kfold_table(folds: Sequence[str], phases: Sequence[str] = PHASES,
+                out: str = "lodo_kfold",
+                title: str = "Leave-one-diameter-out generalization (per-phase NRMSE)"
+                ) -> Optional[Path]:
+    """Build the LODO table from each fold's metric JSON; write Markdown + CSV + LaTeX.
+
+    Emits per-(case, phase) rows plus a per-fold mean, labelling every fold as
+    interpolation (the middle held diameter) or extrapolation.
+    """
+    parsed = parse_folds(folds)
+    by = cases_by_id(load_registry())
+    mid = interp_diameter([d for d, _ in parsed])
+
+    rows: List[Dict] = []
+    for d, exp in parsed:
+        nature = "interp" if (mid is not None and abs(d - mid) < 1e-9) else "extrap"
+        vel, wss = load_metric_file(exp, "velocity"), load_metric_file(exp, "wss")
+        keys = sorted(set(vel) | set(wss), key=lambda k: (k[0], _PHASE_ORDER.get(k[1], 9)))
+        fold_vel, fold_wss = [], []
+        for case, phase in keys:
+            if phase not in phases:
+                continue
+            v, w = vel.get((case, phase), {}), wss.get((case, phase), {})
+            pc, pp = w.get("wss_peak_cfd"), w.get("wss_peak_pinn")
+            rows.append({
+                "held_cm": d, "nature": nature, "case": case,
+                "symmetry": _SYM.get(getattr(by.get(case), "symmetry", ""), "?"),
+                "phase": phase,
+                "vel_nrmse": v.get("vel_nrmse_phase"), "wss_nrmse": w.get("wss_nrmse"),
+                "peak_ratio": (pp / pc) if (pc and pp) else None,
+                "recirc_cfd": v.get("recirc_cfd"), "recirc_pinn": v.get("recirc_pinn"),
+                "div_rel": v.get("div_rel"),
+            })
+            fold_vel.append(rows[-1]["vel_nrmse"])
+            fold_wss.append(rows[-1]["wss_nrmse"])
+        rows.append({
+            "held_cm": d, "nature": nature, "case": "mean", "symmetry": "", "phase": "",
+            "vel_nrmse": _mean_of(fold_vel), "wss_nrmse": _mean_of(fold_wss),
+            "peak_ratio": None, "recirc_cfd": None, "recirc_pinn": None, "div_rel": None,
+        })
+
+    if not rows:
+        print("[kfold] no metrics found for the requested folds.")
+        return None
+
+    TABLES_DIR.mkdir(parents=True, exist_ok=True)
+    cols = ["held_cm", "nature", "case", "symmetry", "phase", "vel_nrmse", "wss_nrmse",
+            "peak_ratio", "recirc_cfd", "recirc_pinn", "div_rel"]
+    with open(TABLES_DIR / f"{out}.csv", "w", newline="", encoding="utf-8") as f:
+        wri = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        wri.writeheader()
+        wri.writerows(rows)
+
+    def recirc_cell(r, sep=" / "):
+        if r["recirc_cfd"] is None:
+            return "—"
+        return f"{_fmt(r['recirc_cfd'])}{sep}{_fmt(r['recirc_pinn'])}"
+
+    hdr = ["Held (cm)", "Nature", "Case (sym)", "Phase", "Vel NRMSE", "WSS NRMSE",
+           "Peak P/C", "Recirc CFD/PINN", "div_rel"]
+    md = [f"# {title}", "",
+          "| " + " | ".join(hdr) + " |", "|" + "|".join(["---"] * len(hdr)) + "|"]
+    for r in rows:
+        case = "**mean**" if r["case"] == "mean" else f"{r['case']} ({r['symmetry']})"
+        md.append("| " + " | ".join([
+            _fmt(r["held_cm"], 1), r["nature"], case, r["phase"],
+            _fmt(r["vel_nrmse"]), _fmt(r["wss_nrmse"]), _fmt(r["peak_ratio"], 2),
+            recirc_cell(r), _fmt(r["div_rel"]),
+        ]) + " |")
+    md_path = TABLES_DIR / f"{out}.md"
+    md_path.write_text("\n".join(md) + "\n", encoding="utf-8")
+
+    tex = [r"\begin{table}[t]", r"  \centering",
+           rf"  \caption{{{title}. 2.3 cm is interpolation; 2.0/2.6 cm are "
+           r"extrapolation (single bracketing diameter). Each fold uses its own "
+           r"train-set scales; do not average across folds.}}",
+           r"  \label{tab:lodo}", r"  \small", r"  \begin{tabular}{llllccccc}",
+           r"    \toprule",
+           r"    Held & Nature & Case (sym.) & Phase & Vel NRMSE & WSS NRMSE & Peak "
+           r"& Recirc C/P & $\mathrm{div}_{\mathrm{rel}}$ \\", r"    \midrule"]
+    for r in rows:
+        case = r"\textbf{mean}" if r["case"] == "mean" else f"{r['case']} ({r['symmetry']})"
+        tex.append("    " + " & ".join([
+            _fmt(r["held_cm"], 1), r["nature"], case, r["phase"], _fmt(r["vel_nrmse"]),
+            _fmt(r["wss_nrmse"]), _fmt(r["peak_ratio"], 2), recirc_cell(r, "/"),
+            _fmt(r["div_rel"]),
+        ]) + r" \\")
+        if r["case"] == "mean":
+            tex.append(r"    \midrule")
+    tex += [r"    \bottomrule", r"  \end{tabular}", r"\end{table}"]
+    (TABLES_DIR / f"{out}.tex").write_text("\n".join(tex) + "\n", encoding="utf-8")
+
+    print(f"[kfold] wrote {md_path.relative_to(PROJECT_ROOT)} (+ .csv, .tex), {len(rows)} rows")
+    print("\n".join(md))
+    return md_path

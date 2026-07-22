@@ -22,11 +22,12 @@ from typing import Dict, Optional, Sequence, Tuple
 
 import numpy as np
 
-from ..config import FIGURES_DIR, INTERACTIVE_DIR
+from ..config import (FIGURES_DIR, INTERACTIVE_DIR, PAPER_FIGURES_DIR,
+                      PROJECT_ROOT)
 from ..data.cache import load_points
 from ..data.geometry import compute_wall_normals
 from ..data.registry import CaseRecord, cases_by_id
-from .metrics import predict_wss_physical
+from .metrics import _fold_mean, interp_diameter, parse_folds, predict_wss_physical
 from .predict import TrainedModel, predict_physical
 
 
@@ -657,3 +658,67 @@ def error_summary(metrics_dir: Path, out_dir: Path = FIGURES_DIR,
     fig.savefig(path, dpi=150)
     plt.close(fig)
     return path
+
+
+def error_vs_diameter(folds: Sequence[str], insample: str = "stageA_case1_s12",
+                      out: str = "error_vs_diameter") -> Path:
+    """Held-out error against the in-sample floor, per held inlet diameter.
+
+    Plots each fold's mean per-phase velocity and WSS NRMSE at the diameter it held
+    out, with the in-sample reconstruction floor as a reference line, and annotates
+    every point as interpolation or extrapolation. ``folds`` are ``"2.3:experiment"``
+    specs. Pure post-processing: reads the metric JSON only, no model or GPU.
+
+    Each fold carries its own train-set nondimensionalization, so only the scale-free
+    NRMSE plotted here is comparable across folds.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    parsed = sorted(parse_folds(folds), key=lambda t: t[0])
+    diam = [d for d, _ in parsed]
+    vel = [_fold_mean(exp, "velocity", "vel_nrmse_phase") for _, exp in parsed]
+    wss = [_fold_mean(exp, "wss", "wss_nrmse") for _, exp in parsed]
+    mid = interp_diameter(diam)
+
+    floor_vel = _fold_mean(insample, "velocity", "vel_nrmse_phase")
+    floor_wss = _fold_mean(insample, "wss", "wss_nrmse")
+
+    fig, axes = plt.subplots(1, 2, figsize=(9.2, 3.6))
+    for ax, y, floor, label in ((axes[0], vel, floor_vel, "Velocity NRMSE (per-phase)"),
+                                (axes[1], wss, floor_wss, "WSS NRMSE (per-phase)")):
+        ax.plot(diam, y, "o-", color="#2c6fbb", lw=2, ms=8, label="held-out (fold mean)")
+        for d, yy in zip(diam, y):
+            if np.isnan(yy):
+                continue
+            nat = "interp" if (mid is not None and abs(d - mid) < 1e-9) else "extrap"
+            ax.annotate(f"{yy:.2f}\n({nat})", (d, yy), textcoords="offset points",
+                        xytext=(0, 9), ha="center", fontsize=8)
+        if not np.isnan(floor):
+            ax.axhline(floor, ls="--", color="#c0392b", lw=1.5,
+                       label=f"in-sample floor ({floor:.2f})")
+        ax.set_xlabel("held inlet diameter (cm)")
+        ax.set_ylabel(label)
+        ax.set_xticks(diam)
+        finite = [v for v in y if not np.isnan(v)] + ([floor] if not np.isnan(floor) else [])
+        ax.set_ylim(0, max(finite) * 1.25 if finite else 1.0)
+        ax.grid(alpha=0.3)
+        ax.legend(fontsize=8, loc="upper left")
+    axes[0].set_title("Generalization vs. in-sample reconstruction", fontsize=10, loc="left")
+    fig.tight_layout()
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    for ext in ("png", "pdf"):
+        fig.savefig(FIGURES_DIR / f"{out}.{ext}", dpi=150, bbox_inches="tight")
+    if PAPER_FIGURES_DIR.parent.exists():      # only when a local paper/ tree is present
+        PAPER_FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+        fig.savefig(PAPER_FIGURES_DIR / f"{out}.pdf", bbox_inches="tight")
+    plt.close(fig)
+
+    png = FIGURES_DIR / f"{out}.png"
+    print(f"[fig] wrote {png.relative_to(PROJECT_ROOT)} (+ .pdf)")
+    print(f"      diam={diam}  vel_mean={[round(v, 3) for v in vel]}  "
+          f"wss_mean={[round(w, 3) for w in wss]}")
+    print(f"      in-sample floor: vel={floor_vel:.3f}  wss={floor_wss:.3f}")
+    return png
