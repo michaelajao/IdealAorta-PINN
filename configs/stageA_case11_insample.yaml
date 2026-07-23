@@ -1,0 +1,72 @@
+experiment:
+  name: stageA_case11_insample
+  description: In-sample reconstruction of Case 11 (2.3 cm, healthy control) with S1+S2, isotropic Fourier, 3D velocity supervision. Per-case reconstruction floor for the twelve-geometry table.
+random_seed: 42
+device: cuda
+output_dir: models/stageA_case11_insample
+loss_balance:
+  per_phase_velocity_scale: true
+data:
+  train_cases:
+  - 11
+  phases:
+  - systolic
+  - diastolic
+  velocity_kinds:
+  - 3D
+model:
+  hidden_dim: 128
+  num_layers: 5
+  num_frequencies: 24
+  fourier_scale: 1.0
+  anisotropic_fourier: false
+  use_fourier: true
+  use_param_encoder: true
+  param_encoder_dims:
+  - 16
+  - 16
+  coord_encoder_dims: null
+  nut:
+    hidden_dim: 64
+    num_layers: 3
+    nu_t_min: 0.001
+    initial_nut: 0.02
+    lr_multiplier: 10.0
+physics:
+  mu: 0.0035
+  rho: 1060.0
+  n_collocation: 4000
+loss_weights:
+  velocity: 1.0
+  physics: 0.05
+  pressure: 1.0
+  wss: 1.0
+  noslip: 10.0
+  inlet: 1.0
+  outlet: 1.0
+adaptive_weights:
+  enabled: true
+  update_interval: 250
+  alpha: 0.9
+  ref: velocity
+  weight_cap: 50.0
+  physics_floor: 0.05
+training:
+  epochs: 18000
+  lr: 0.0001
+  scheduler:
+    type: CosineAnnealingLR
+    eta_min: 1.0e-06
+  gradient_clip: 1.0
+  eval_interval: 250
+  save_interval: 1000
+  early_stopping:
+    enabled: true
+    patience: 2000
+    min_delta: 1.0e-05
+loaders:
+  max_velocity_points: 40000
+  volumetric_collocation: true
+  wall_normals_method: auto
+  inlet_n_radial: 6
+  inlet_n_angular: 12
