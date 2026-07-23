@@ -48,8 +48,9 @@ The core experiment design is **leave-one-diameter-out (LODO)**: train on two of
 diameters (all symmetry classes), hold out the third, and report error against CFD on the
 held-out diameter. Three folds together cover every diameter — see
 `configs/stageB_kfold_hold2p0.yaml`, `stageB_richerloo_f16.yaml` (holds 2.3 cm), and
-`stageB_kfold_hold2p6.yaml`. `stageA_*` configs are single-case de-risking runs; `stageC_*` trains
-on the full 12-case study.
+`stageB_kfold_hold2p6.yaml`. `stageA_case*_insample.yaml` fit one surrogate per geometry
+(the per-case reconstruction floor, one for each of the twelve CFD cases); the other
+`stageA_*` configs are single-case de-risking runs.
 
 ## Method
 
@@ -111,8 +112,8 @@ scripts/
   run.py                  # train + validate + figures for one config (the main entry point)
   report.py               # post-training: evaluate / kfold-table / error-vs-diameter
 
-configs/                  # one YAML per experiment (stageA_* de-risking, stageB_* LODO
-                           # folds, stageC_* full study), plus cases.yaml / constants.yaml
+configs/                  # one YAML per experiment (stageA_case*_insample per-case fits,
+                           # other stageA_* de-risking, stageB_* LODO folds), + cases/constants.yaml
 ```
 
 ## Setup
@@ -163,9 +164,10 @@ run a variant (e.g. a seed sweep) into its own `models/<name>_<tag>/` without to
 
 ## Running at scale (multi-GPU / cluster)
 
-The heavier configs (`stageC_*`: the full 12-case study, larger networks, more collocation points)
-are best run on a large-memory GPU. The project is portable — no scheduler script needed; SSH in
-and run interactively under `tmux` so long runs survive disconnects:
+The LODO folds train one network on six geometries at once and are the most memory-hungry
+runs (~23 GB); the per-case `stageA_case*_insample` fits are light (~12 GB each). All fit on
+a single large-memory GPU. The project is portable — no scheduler script needed; SSH in and
+run interactively under `tmux` so long runs survive disconnects:
 
 ```bash
 git clone <this-repo-url>
@@ -180,7 +182,7 @@ python scripts/prepare.py registry
 python scripts/prepare.py cache
 
 tmux new -s ideal
-python scripts/run.py --config configs/stageC_hpc.yaml   # full study, scaled for a large GPU
+python scripts/run.py --config configs/stageB_richerloo_f16.yaml   # a LODO fold (train 6, predict held-out diameter)
 #   detach: Ctrl-b then d;  reattach: tmux attach -t ideal
 ```
 
