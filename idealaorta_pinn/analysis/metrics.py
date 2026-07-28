@@ -564,11 +564,20 @@ def load_metric_file(exp: str, kind: str) -> Dict:
 
 
 def _fold_mean(exp: str, kind: str, key: str) -> float:
-    """Mean of one metric over every row of one experiment's metric file."""
+    """Mean of one metric over one experiment's HELD-OUT rows.
+
+    A fold's metric file carries both the cases it trained on and the ones it held
+    out, so averaging every row would quietly blend the in-sample error into a
+    number reported as generalization -- the same trap ``kfold_table`` avoids, and
+    the reason both now key off the regime tag. Files written before the tag
+    existed have no held-out rows to select and are averaged whole, as before.
+    """
     p = METRICS_DIR / exp / f"{kind}.json"
     if not p.exists():
         return float("nan")
-    return _mean_of(r.get(key) for r in json.loads(p.read_text()))
+    rows = json.loads(p.read_text())
+    held = [r for r in rows if r.get("regime") == "held-out"]
+    return _mean_of(r.get(key) for r in (held or rows))
 
 
 def parse_folds(specs: Sequence[str]) -> List:
