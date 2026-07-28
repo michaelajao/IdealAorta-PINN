@@ -110,6 +110,8 @@ scripts/
   prepare.py              # registry / cache subcommands (data pipeline)
   run.py                  # train + validate + figures for one config (the main entry point)
   report.py               # post-training: evaluate / kfold-table / error-vs-diameter
+  queue.sh                # run configs back-to-back, each gated on real GPU headroom
+  regen_interactive.sh    # rebuild the rotatable 3D HTML for every run (inference only)
 
 configs/                  # one YAML per experiment (stageA_* de-risking, stageB_* LODO
                            # folds, stageC_* full study), plus cases.yaml / constants.yaml
@@ -148,6 +150,17 @@ python scripts/report.py evaluate            # score every trained run vs CFD ->
 python scripts/report.py kfold-table         # LODO generalization table -> report/tables/ (md + csv + tex)
 python scripts/report.py error-vs-diameter   # held-out error vs in-sample floor -> report/figures/
 ```
+
+To run several configs back-to-back on one GPU, `scripts/queue.sh` waits for real free memory
+before each job rather than racing an in-flight run into an OOM:
+
+```bash
+scripts/queue.sh stageA_case5_insample stageA_case6_insample      # ~12 GB each
+NEED_MIB=40000 scripts/queue.sh stageC_all12                      # the 12-case fit
+```
+
+`scripts/regen_interactive.sh` rebuilds the rotatable 3D HTML for every run straight from the
+saved checkpoints — use it if a batch was launched with `--no-interactive`.
 
 Outputs land in experiment-scoped folders: `models/<experiment>/` for checkpoints and training
 history, `report/{figures,metrics,tables,interactive,logs}/<experiment>/` for generated outputs.

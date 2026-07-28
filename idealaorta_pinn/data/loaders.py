@@ -65,9 +65,19 @@ def _load_velocity_points(rec: CaseRecord, phase: str,
     return coords, vel
 
 
-def _load_wall_points(rec: CaseRecord, phase: str
+def _load_wall_points(rec: CaseRecord, phase: str,
+                      max_points: Optional[int] = None,
+                      rng: Optional[np.random.Generator] = None
                       ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    """Wall (coords, pressure, wss components) for one (case, phase)."""
+    """Wall (coords, pressure, wss components) for one (case, phase).
+
+    ``max_points`` caps the wall cloud per group. This matters more than it looks:
+    the trainer concatenates every group's wall points into ONE batch and pushes it
+    through nine ``create_graph=True`` autograd calls for the WSS/no-slip term, so
+    wall memory scales with (points/group x groups) and is what actually bounds a
+    many-group fit -- ``max_velocity_points`` does not touch it. Default ``None``
+    keeps the full cloud, which is what every existing run was trained with.
+    """
     df = load_points(rec, "WSS", phase)
     if df is None:
         return None
@@ -75,6 +85,10 @@ def _load_wall_points(rec: CaseRecord, phase: str
     p = df["p"].to_numpy(np.float64).reshape(-1, 1) if "p" in df else np.zeros((len(df), 1))
     wcols = ["wss_x", "wss_y", "wss_z"]
     wss = df[wcols].to_numpy(np.float64) if set(wcols).issubset(df.columns) else np.zeros((len(df), 3))
+    if max_points is not None and len(coords) > max_points:
+        sel = (rng or np.random.default_rng(0)).choice(len(coords), size=max_points,
+                                                       replace=False)
+        coords, p, wss = coords[sel], p[sel], wss[sel]
     return coords, p, wss
 
 
@@ -169,6 +183,7 @@ def build_bundle(records: Sequence[CaseRecord],
                  normalizer: Normalizer,
                  device: str = "cuda",
                  max_velocity_points: int = 40_000,
+                 max_wall_points: Optional[int] = None,
                  n_collocation: int = 8_000,
                  wall_normals_method: str = "auto",
                  inlet_n_radial: int = 6,
@@ -196,7 +211,7 @@ def build_bundle(records: Sequence[CaseRecord],
         for phase in phases:
             vp = _load_velocity_points(rec, phase, max_velocity_points, rng,
                                        kinds=velocity_kinds)
-            wp = _load_wall_points(rec, phase)
+            wp = _load_wall_points(rec, phase, max_wall_points, rng)
             if vp is None and wp is None:
                 continue
 

@@ -160,9 +160,16 @@ def main() -> None:
     # run. So we evaluate the training cases AND whatever diseased cases the fold left
     # out, and tag each row with its regime. A fit that already covers everything it
     # could be tested on (in-sample, or the full 12) is unaffected.
+    #
+    # A SINGLE-case fit is not a fold, though: a stageA de-risking run on one geometry
+    # has not "held out" the other eight, and scoring it against them would tag rows
+    # `held-out` that the k-fold table would then happily consume. Those runs report
+    # only the case they were fit on.
     train_cases = list(cfg["data"]["train_cases"])
     if args.cases:
         cases, held_out = list(args.cases), set()
+    elif len(train_cases) < 2:
+        cases, held_out = train_cases, set()
     else:
         diseased = [c.case_id for c in records if c.disease_flag == 1]
         held_out = set(diseased) - set(train_cases)
@@ -212,8 +219,7 @@ def main() -> None:
     if not args.no_figures:
         from idealaorta_pinn.analysis.figures import (plane_comparison, convergence_curves,
                                                        save_comparison_png)
-        from idealaorta_pinn.analysis.figures import (wss_map, physics_residual_map,
-                                                       scatter_density, error_summary)
+        from idealaorta_pinn.analysis.figures import wss_map, error_summary
         produced = []
         for cid in cases:
             for ph in phases:
@@ -240,16 +246,6 @@ def main() -> None:
                     produced.append(save_comparison_png(model, records, cid, ph, out_dir=fig_dir))
                 except Exception as e:  # noqa: BLE001
                     print(f"  [figure] skip streamlines3d case {cid} {ph}: {e}")
-                # A9/A10 diagnostics: continuity + nu_t residual map, and the
-                # PINN-vs-CFD calibration hexbins (per case, phase).
-                try:
-                    produced.append(physics_residual_map(model, records, cid, ph, out_dir=fig_dir))
-                except Exception as e:  # noqa: BLE001
-                    print(f"  [figure] skip residual-map case {cid} {ph}: {e}")
-                try:
-                    produced.append(scatter_density(model, records, cid, ph, out_dir=fig_dir))
-                except Exception as e:  # noqa: BLE001
-                    print(f"  [figure] skip scatter-density case {cid} {ph}: {e}")
         # training convergence curve (once per run, from loss_history.csv)
         hist = out_dir / "loss_history.csv"
         if hist.exists():

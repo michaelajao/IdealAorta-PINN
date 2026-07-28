@@ -514,14 +514,18 @@ _MODEL_SUBDIRS = ("", "_insample", "_ablation", "_seedsweep")
 # In-sample rows are the per-case reconstruction floor; LODO rows are the three
 # leave-one-diameter-out folds, each evaluated on the cases its fold held out.
 REPORTED_RUNS = [
+    # Case 1's in-sample fit is the S1+S2 headline arm, which predates the
+    # "<case>_insample" naming; cases 2-12 follow it.
     ("insample_c1", "stageA_case1_s12", [1], "in-sample", "configs/stageA_case1_s12.yaml"),
-    ("insample_c2", "stageA_case2_insample", [2], "in-sample", "configs/stageA_case2_insample.yaml"),
-    ("insample_c3", "stageA_case3_insample", [3], "in-sample", "configs/stageA_case3_insample.yaml"),
-    ("insample_c4", "stageA_case4_insample", [4], "in-sample", "configs/stageA_case4_insample.yaml"),
-    ("insample_c7", "stageA_case7_insample", [7], "in-sample", "configs/stageA_case7_insample.yaml"),
+    *(( f"insample_c{c}", f"stageA_case{c}_insample", [c], "in-sample",
+        f"configs/stageA_case{c}_insample.yaml") for c in range(2, 13)),
     ("lodo_2.0", "stageB_kfold_hold2p0", [1, 2, 3], "LODO-2.0", "configs/stageB_kfold_hold2p0.yaml"),
     ("lodo_2.3", "stageB_richerloo_f16", [4, 5, 6], "LODO-2.3", "configs/stageB_richerloo_f16.yaml"),
     ("lodo_2.6", "stageB_kfold_hold2p6", [7, 8, 9], "LODO-2.6", "configs/stageB_kfold_hold2p6.yaml"),
+    # Supervision-density diagnostic: same fold as lodo_2.3 with 3.3x the points per
+    # group, to separate the in-sample-vs-LODO gap from the training-point budget.
+    ("lodo_2.3_rich", "stageB_richerloo_f16_rich", [4, 5, 6], "LODO-2.3-rich",
+     "configs/stageB_richerloo_f16_rich.yaml"),
 ]
 
 

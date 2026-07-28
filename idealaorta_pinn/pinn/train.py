@@ -121,6 +121,8 @@ class Trainer:
         self.bundle: Bundle = build_bundle(
             records, train_cases, phases, self.normalizer, device=self.device,
             max_velocity_points=int(ld.get("max_velocity_points", 40_000)),
+            max_wall_points=(int(ld["max_wall_points"])
+                             if ld.get("max_wall_points") is not None else None),
             n_collocation=int(self.cfg.get("physics", {}).get("n_collocation", 8_000)),
             wall_normals_method=ld.get("wall_normals_method", "auto"),
             inlet_n_radial=int(ld.get("inlet_n_radial", 6)),

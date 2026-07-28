@@ -95,6 +95,13 @@ training:
 
 loaders:
   max_velocity_points: 1500             # per group; 24 groups -> 36k total
+  # The 2026-07-23 attempt OOM'd at 47 GB despite having a THIRD of the velocity
+  # points of the stageB rich fold that fit. Wall points were the reason: they were
+  # never subsampled, so all 24 groups contributed their full clouds (318k points,
+  # ~9x the velocity budget) to a single batch that then takes nine
+  # create_graph=True autograd passes for the WSS/no-slip term. 6000/group -> 144k
+  # total, below the ~163k that the 12-group folds carried at a 23.4 GB peak.
+  max_wall_points: 6000                 # per group; 24 groups -> 144k total
   volumetric_collocation: true
   wall_normals_method: auto
   inlet_n_radial: 6
