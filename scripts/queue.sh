@@ -2,12 +2,12 @@
 # Sequential training driver with a GPU memory guard before every run.
 #
 #   scripts/queue.sh stageA_case5_insample stageA_case6_insample
-#   NEED_MIB=40000 scripts/queue.sh stageC_all12
+#   NEED_MIB=42000 scripts/queue.sh stageB_richerloo_f16_rich
 #   GPU=0 scripts/queue.sh stageB_kfold_hold2p0
 #
 # Each argument is a config basename under configs/ (no .yaml). A job waits until the
 # GPU actually has NEED_MIB free rather than racing an in-flight run into an OOM.
-# Measured peaks: in-sample ~12 GB, LODO (trimmed) ~23 GB, rich/stageC ~40-47 GB.
+# Measured peaks: in-sample ~12 GB, LODO (trimmed) ~23 GB, the rich LODO arm ~40 GB.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
