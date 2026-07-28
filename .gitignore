@@ -50,3 +50,6 @@ Thumbs.db
 .vscode/
 .idea/
 CLAUDE.md
+
+# --- off-book local experiments: not part of the reported study ---
+*.local.yaml
