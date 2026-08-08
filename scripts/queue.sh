@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.." || exit 1
 
 GPU=${GPU:-1}
 NEED_MIB=${NEED_MIB:-26000}
-PY=${PY:-~/miniconda3/envs/deep_tf/bin/python}
+PY=${PY:-python}
 export CUDA_VISIBLE_DEVICES=$GPU
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 

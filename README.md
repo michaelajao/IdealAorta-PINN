@@ -78,8 +78,6 @@ held-out diameter. Three folds together cover every diameter — see
 The 12 CFD cases (raw CFD-Post exports **and** the parsed parquet/npz cache) are **not tracked in
 this git repository** — at ~1.1 GB raw + ~0.2 GB processed they don't belong in git history.
 
-<!-- TODO: link the permanent data repository (e.g. Zenodo/OSF DOI) once the dataset is deposited. -->
-
 Once obtained, place the 12 `Case *` folders (as exported by ANSYS CFD-Post) under `data/raw/`,
 matching the layout `data/raw/Case <n>, <diameter> Inlet ... /PINNS/*.csv`, then run the data
 pipeline below to build the registry and parquet cache. `data/registry.json` (the small, derived
@@ -205,5 +203,3 @@ If you use this code or the accompanying dataset, please cite the companion pati
 study this project extends:
 
 > Ur Rehman et al., "[title]," *Physics of Fluids* 37(3):031913, 2025.
-
-<!-- TODO: add a citation entry (and CITATION.cff) for this project's own paper once published. -->

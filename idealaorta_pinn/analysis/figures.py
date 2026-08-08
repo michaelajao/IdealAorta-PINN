@@ -340,11 +340,12 @@ _KIND_AXES = {"XY": (0, 1), "XZ": (0, 2), "YZ": (1, 2)}
 
 
 def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes,
-                 unit, out_path: Path, axis_labels=("", ""), diverging=False, vmin=0.0):
+                 unit, out_path: Path, axis_labels=("", ""), diverging=False, vmin=0.0,
+                 marker: float = 4.0):
     """CFD | Surrogate | Absolute-error scatter maps on a projected plane.
 
-    Clean publication panels (named columns, no exposed [min,max] debug ranges,
-    no baked-in suptitle -- the LaTeX caption supplies case/phase/disease state)."""
+    Publication panels with named columns and no baked-in suptitle -- the LaTeX
+    caption supplies the case, phase and disease state."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -352,7 +353,7 @@ def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes,
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.5), constrained_layout=True)
     for ax, vals, title, cmap, vm in zip(axes, (cfd, pinn, err), titles, cmaps, vmaxes):
         lo = -vm if diverging else vmin
-        sc = ax.scatter(ca, cb, c=vals, s=4, cmap=cmap, vmin=lo, vmax=vm)
+        sc = ax.scatter(ca, cb, c=vals, s=marker, cmap=cmap, vmin=lo, vmax=vm)
         ax.set_title(title, fontsize=13)
         ax.set_xlabel(axis_labels[0], fontsize=11)
         ax.set_ylabel(axis_labels[1], fontsize=11)
@@ -366,10 +367,22 @@ def _three_panel(ca, cb, cfd, pinn, err, titles, cmaps, vmaxes,
 
 
 def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, phase: str,
-            kind: str = "XZ", max_points: int = 20_000, out_dir: Path = FIGURES_DIR) -> Path:
+            kind: str = "XZ", max_points: int = 20_000, out_dir: Path = FIGURES_DIR,
+            half: bool = True) -> Path:
     """CFD | Surrogate | error wall-shear-stress magnitude (Pa), wall points
-    projected onto the ``kind`` plane (``XY`` looks down the vessel; ``XZ`` is the
-    long-axis side view)."""
+    projected onto the ``kind`` plane.
+
+    The vessel axis is x, so both views are long-axis. ``XY`` keeps y, the
+    anterior--posterior axis along which beta is defined, and is the *medial*
+    view; ``XZ`` keeps the lateral axis and is the *transverse* view.
+
+    Flattening a closed surface makes both halves of the wall land on the same 2D
+    point, drawn in (randomised) sample order. That is harmless in the medial
+    view, where the two halves carry similar WSS, but the transverse view
+    superimposes the anterior and posterior walls -- several-fold apart in WSS --
+    and comes out visibly stippled. ``half=True`` (the default) therefore keeps
+    only the hemisphere whose outward normal faces the viewer, giving a
+    single-valued map; pass ``half=False`` for the raw both-sides projection."""
     rec = cases_by_id(records)[case_id]
     df = load_points(rec, "WSS", phase)
     if df is None or "wss" not in df.columns:
@@ -378,12 +391,18 @@ def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, ph
         df = df.sample(max_points, random_state=0)
     coords = df[["x", "y", "z"]].to_numpy(float)
     cfd = df["wss"].to_numpy(float)
+    # Normals are estimated on the full cloud, then masked -- the other way round
+    # would starve the neighbourhoods along the cut.
     normals = compute_wall_normals(coords)
+    a, b = _KIND_AXES[kind]
+    if half:
+        d = ({0, 1, 2} - {a, b}).pop()          # the axis this view collapses
+        keep = normals[:, d] > 0
+        coords, cfd, normals = coords[keep], cfd[keep], normals[keep]
     beta = rec.beta if rec.beta is not None else 1.0
     pinn = predict_wss_physical(model, coords, normals, rec.inlet_diameter_cm,
                                 rec.disease_flag, phase, beta=beta)["wss_magnitude"]
     err = np.abs(pinn - cfd)
-    a, b = _KIND_AXES[kind]
     vm = float(np.percentile(cfd, 99)) or 1e-9
     return _three_panel(
         coords[:, a], coords[:, b], cfd, pinn, err,
@@ -391,6 +410,9 @@ def wss_map(model: TrainedModel, records: Sequence[CaseRecord], case_id: int, ph
         cmaps=("turbo", "turbo", "magma"),
         vmaxes=(vm, vm, float(np.percentile(err, 99)) or 1e-9),
         unit="Pa", axis_labels=("xyz"[a] + " (m)", "xyz"[b] + " (m)"),
+        # keeping one hemisphere halves the points over the same area, so double
+        # the marker *area* to stop the export's sampling gaps opening up as holes
+        marker=8.0 if half else 4.0,
         out_path=(Path(out_dir) / f"case{case_id:02d}_{phase}_{kind}_wss_map.png"))
 
 
