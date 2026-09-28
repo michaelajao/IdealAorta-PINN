@@ -27,10 +27,12 @@ This module ports the proven parser from the project's original
 
 from __future__ import annotations
 
+import io
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 # ---------------------------------------------------------------------------
@@ -53,6 +55,16 @@ _COLUMN_RULES: List[tuple[str, str]] = [
     ("x", "x ["),
     ("y", "y ["),
     ("z", "z ["),
+    # Volume-export turbulence fields, under both CFD-Post's own names and the Fluent
+    # names it passes through when reading a Fluent .cas/.dat.
+    ("mu_t", "eddy viscosity"),
+    ("mu_t", "turbulent viscosity"),
+    ("k", "turbulence kinetic energy"),
+    ("k", "turbulent kinetic energy"),
+    ("omega", "turbulence eddy frequency"),
+    ("omega", "specific dissipation rate"),
+    ("gamma", "intermittency"),
+    ("wall_dist", "wall distance"),
 ]
 
 
@@ -134,6 +146,33 @@ def read_cfdpost_csv(path: str | Path, canonical: bool = True) -> pd.DataFrame:
     return canonicalize_columns(df).drop_duplicates().reset_index(drop=True)
 
 
+def read_cfdpost_blocks(path: str | Path) -> Dict[str, pd.DataFrame]:
+    """Parse a multi-block CFD-Post export (``[Name]`` / ``[Data]`` sections) by block.
+
+    The 2026-09 whole-domain exports hold one block per boundary or body (``solid``,
+    ``wall``, ``aneurysm``, ``inlet``, ``outlet``) with the same columns. Unlike
+    :func:`read_cfdpost_csv` no row is dropped: surface-only fields such as wall shear
+    are ``null`` at interior nodes and become NaN, and a column that is null throughout
+    a block is removed. Columns are canonicalized; the velocity magnitude is dropped
+    (it is recomputable from u, v, w).
+
+    Returns:
+        ``{block name: DataFrame}`` with float64 coordinates and float32 fields.
+    """
+    text = Path(path).read_text(encoding="utf-8", errors="ignore")
+    blocks: Dict[str, pd.DataFrame] = {}
+    for chunk in text.split("[Name]")[1:]:
+        name, _, rest = chunk.strip().partition("\n")
+        _, _, table = rest.partition("[Data]")
+        df = pd.read_csv(io.StringIO(table.strip()), na_values=["null"], skipinitialspace=True)
+        df = canonicalize_columns(df).drop(columns=["speed"], errors="ignore")
+        df = df.dropna(axis=1, how="all")
+        for col in df.columns:
+            df[col] = df[col].astype(np.float64 if col in ("x", "y", "z") else np.float32)
+        blocks[name.strip()] = df
+    return blocks
+
+
 # ---------------------------------------------------------------------------
 # Filename interpretation
 # ---------------------------------------------------------------------------
@@ -141,12 +180,19 @@ _DATA_KIND_PATTERNS: List[tuple[str, str]] = [
     ("3D", r"3\s*d\s*velocity\s*streamlines"),
     ("XY", r"xy\s*plane"),
     ("XZ", r"xz\s*plane"),
+    # the whole lumen wall; checked before WSS, whose pattern its name also contains
+    ("WALL", r"full\s*wall"),
     ("WSS", r"wss\s*and\s*pressure"),
+    ("VOL", r"fluid\s*volume"),
 ]
 
 
 def detect_data_kind(name: str) -> str:
-    """Classify a CFD-Post export by its filename: '3D', 'XY', 'XZ', 'WSS' or 'unknown'."""
+    """Classify a CFD-Post export by filename: '3D', 'XY', 'XZ', 'WALL', 'WSS', 'VOL' or 'unknown'.
+
+    'WSS' is the existing iso-clip of the aneurysm wall; 'WALL' is the whole lumen wall
+    and 'VOL' every node of the fluid domain, the two exports requested for the revision.
+    """
     low = name.lower()
     for kind, pat in _DATA_KIND_PATTERNS:
         if re.search(pat, low):

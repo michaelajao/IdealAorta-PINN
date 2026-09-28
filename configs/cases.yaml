@@ -1,7 +1,7 @@
 # Canonical metadata for the 12 idealized aortic cases.
 #
 # The registry (idealaorta_pinn.data.registry) DISCOVERS cases by globbing
-# `data/raw/Case *` and parsing folder names with regex, so it is robust to the
+# `data/raw/legacy_2025/Case *` and parsing folder names with regex, so it is robust to the
 # inconsistent on-disk naming (e.g. "Disaesed", "C5," prefixes, phase typos).
 # This file provides the authoritative ground truth used to (a) supply beta for
 # each symmetry class and (b) cross-check the auto-parsed (diameter, health).

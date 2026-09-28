@@ -25,7 +25,8 @@ import torch
 import torch.optim as optim
 
 from ..config import MODELS_DIR, PROJECT_ROOT
-from ..data.loaders import Bundle, build_bundle, fit_normalizer, load_holdout_velocity
+from ..data.loaders import (Bundle, build_bundle, fit_normalizer, load_full_holdout,
+                            load_holdout_velocity, resample_group)
 from ..data.normalize import Normalizer
 from ..data.registry import load_registry
 from .losses import (data_pressure_loss, data_velocity_loss, inlet_velocity_loss,
@@ -99,13 +100,28 @@ class Trainer:
         train_cases = list(data["train_cases"])
         phases = list(data.get("phases", ["systolic", "diastolic"]))
         velocity_kinds = tuple(data.get("velocity_kinds", ["3D"]))
+        ld = self.cfg.get("loaders", {})
+        # Diagnostic-only supervision filters (off in every reported run): a
+        # checkerboard of XY/XZ slice tiles, and per-source caps before pooling.
+        slice_tiles = ld.get("slice_tiles")
+        kind_max_points = ld.get("kind_max_points")
+        # Whole-vessel exports (volume, full wall, inlet and outlet faces); replaces the
+        # streamline/clip sources and redraws each batch from point pools.
+        self.full_export = data.get("full_export")
+        self._rng = np.random.default_rng(self.seed + 1)
 
         print(f"[trainer] fitting normalizer on cases {train_cases}, phases {phases}")
-        print(f"[trainer] velocity supervision sources: {list(velocity_kinds)}")
+        if self.full_export:
+            print(f"[trainer] full export: {self.full_export}")
+        else:
+            print(f"[trainer] velocity supervision sources: {list(velocity_kinds)}")
+        if slice_tiles:
+            print(f"[trainer] slice tiles: {slice_tiles}  per-kind caps: {kind_max_points}")
         self.normalizer: Normalizer = fit_normalizer(
             records, train_cases, phases, mu=mu, rho=rho, seed=self.seed,
             per_phase_velocity_scale=self.per_phase_vel,
-            velocity_kinds=velocity_kinds)
+            velocity_kinds=velocity_kinds, slice_tiles=slice_tiles,
+            kind_max_points=kind_max_points, full_export=self.full_export)
         if phys.get("re_override"):
             self._Re = float(phys["re_override"])
         else:
@@ -117,7 +133,6 @@ class Trainer:
                   f"U_ref_diastolic={self.normalizer.u_ref_diastolic:.4f} m/s, "
                   f"diastolic gain s={self.normalizer.vel_phase_gain('diastolic'):.4f}")
 
-        ld = self.cfg.get("loaders", {})
         self.bundle: Bundle = build_bundle(
             records, train_cases, phases, self.normalizer, device=self.device,
             max_velocity_points=int(ld.get("max_velocity_points", 40_000)),
@@ -129,9 +144,17 @@ class Trainer:
             inlet_n_angular=int(ld.get("inlet_n_angular", 12)),
             velocity_kinds=velocity_kinds,
             volumetric_collocation=bool(ld.get("volumetric_collocation", False)),
+            slice_tiles=slice_tiles,
+            kind_max_points=kind_max_points,
+            inlet_face=ld.get("inlet_face"),
+            outlet_section=bool(ld.get("outlet_section", True)),
+            full_export=self.full_export,
             seed=self.seed,
         )
-        if bool(ld.get("volumetric_collocation", False)):
+        self._batch_sizes = (int(ld.get("max_velocity_points", 40_000)),
+                             int(self.cfg.get("physics", {}).get("n_collocation", 8_000)),
+                             int(ld["max_wall_points"]) if ld.get("max_wall_points") is not None else None)
+        if bool(ld.get("volumetric_collocation", False)) and not self.full_export:
             n_coll = [int(g.tensors["cx"].shape[0]) for g in self.bundle.groups if "cx" in g.tensors]
             print(f"[trainer] S2 volumetric collocation ON: "
                   f"{sum(n_coll)} interior points across {len(n_coll)} groups")
@@ -140,7 +163,14 @@ class Trainer:
         # Optional held-out velocity slice for validation (Stage A de-risk).
         self.holdout = None
         ho = data.get("holdout")
-        if ho:
+        if self.full_export and self.full_export.get("val_monitor", True):
+            # Monitor = mean over groups of the velocity rel-L2 on the validation cubes,
+            # a fixed set, so best-model selection is not driven by batch redraws.
+            self.holdout = load_full_holdout(records, train_cases, phases, self.normalizer,
+                                             self.full_export, device=self.device)
+            print(f"[trainer] monitor: validation cubes, "
+                  f"{sum(h['x'].shape[0] for h in self.holdout)} points in {len(self.holdout)} groups")
+        elif ho:
             self.holdout = load_holdout_velocity(
                 records, int(ho["case"]), ho["phase"], ho["kind"],
                 self.normalizer, device=self.device)
@@ -247,6 +277,8 @@ class Trainer:
             B["vel"] = dict(x=cat(vg, "vx"), y=cat(vg, "vy"), z=cat(vg, "vz"),
                             params=cat(vg, "v_params"), ut=cat(vg, "u_t"),
                             vt=cat(vg, "v_t"), wt=cat(vg, "w_t"), gid=gid, ng=ng, pg2=pg2(vg))
+            if all("nut_t" in g.tensors for g in vg):
+                B["vel"]["nut_t"] = cat(vg, "nut_t")
             cgid, cng = gid_of(vg, "cx")
             B["coll"] = dict(x=cat(vg, "cx"), y=cat(vg, "cy"), z=cat(vg, "cz"),
                              params=cat(vg, "c_params"), gid=cgid, ng=cng, pg2=pg2(vg))
@@ -262,6 +294,10 @@ class Trainer:
                 igid, ing = gid_of(ig, "inlet_x")
                 tu, tv, tw = [], [], []
                 for g in ig:
+                    if "inlet_ut" in g.tensors:     # full export: the CFD's own inlet nodes
+                        tu.append(g.tensors["inlet_ut"]); tv.append(g.tensors["inlet_vt"])
+                        tw.append(g.tensors["inlet_wt"])
+                        continue
                     n = g.tensors["inlet_x"].shape[0]
                     ax = int(g.meta.get("axial_dim", 0))
                     u_in = float(g.meta.get("u_inlet_nd", 0.0))
@@ -274,9 +310,12 @@ class Trainer:
             og = [g for g in wg if "outlet_x" in g.tensors]
             if og:
                 ogid, ong = gid_of(og, "outlet_x")
+                # Target pressure: the full export's outlet-face pressure, else zero gauge.
+                pt = torch.cat([g.tensors["outlet_p_t"] if "outlet_p_t" in g.tensors
+                                else torch.zeros_like(g.tensors["outlet_x"]) for g in og])
                 B["outlet"] = dict(x=cat(og, "outlet_x"), y=cat(og, "outlet_y"),
                                    z=cat(og, "outlet_z"), params=cat(og, "outlet_params"),
-                                   gid=ogid, ng=ong)
+                                   pt=pt, gid=ogid, ng=ong)
         self._bz = B
 
     @staticmethod
@@ -356,7 +395,7 @@ class Trainer:
         ob = self._bz.get("outlet")
         if ob is not None:
             p = self.networks["p"](torch.cat([ob["x"], ob["y"], ob["z"], ob["params"]], dim=1)).view(-1, 1)
-            acc["outlet"] = self._seg_mean(p ** 2, ob["gid"], ob["ng"]).mean()
+            acc["outlet"] = self._seg_mean((p - ob["pt"]) ** 2, ob["gid"], ob["ng"]).mean()
         return acc
 
     def _component_losses_reference(self) -> Dict[str, torch.Tensor]:
@@ -404,8 +443,14 @@ class Trainer:
         aw = self.cfg.get("adaptive_weights", {})
         if not aw.get("enabled", False) or not self.adaptive_weights:
             w = self.cfg.get("loss_weights", {})
-            return {c: float(w.get(c, 1.0)) for c in COMPONENTS}
-        return dict(self.adaptive_weights)
+            out = {c: float(w.get(c, 1.0)) for c in COMPONENTS}
+        else:
+            out = dict(self.adaptive_weights)
+        # Components switched off entirely (e.g. a velocity-only run: no wall-shear or wall-
+        # pressure supervision), whatever the adaptive scheme would give them.
+        for c in self.cfg.get("training", {}).get("disable_components", []):
+            out[c] = 0.0
+        return out
 
     def _update_adaptive_weights(self, comp: Dict[str, torch.Tensor]) -> None:
         aw = self.cfg["adaptive_weights"]
@@ -416,8 +461,9 @@ class Trainer:
         params = [p for n in self.networks.values() for p in n.parameters() if p.requires_grad]
 
         grad_norms = {}
+        off = set(self.cfg.get("training", {}).get("disable_components", []))
         for c, loss in comp.items():
-            if not loss.requires_grad or float(loss) == 0.0:
+            if c in off or not loss.requires_grad or float(loss) == 0.0:
                 continue
             grads = torch.autograd.grad(loss, params, retain_graph=True, allow_unused=True)
             vals = [g.abs().mean().item() for g in grads if g is not None]
@@ -473,18 +519,37 @@ class Trainer:
                 self.grad_clip)
         self.opt.step()
 
-        # dedicated nut update on physics only
+        # dedicated nut update on physics only (plus, with a full export, the CFD's own
+        # eddy viscosity as a target, matched in log space across its ~6 decades)
         self.opt_nut.zero_grad(set_to_none=True)
         ploss = self._physics_only()
+        extra = {}
+        nut_w = float((self.full_export or {}).get("nut_weight", 0.0))
+        b = self._bz.get("vel")
+        if nut_w > 0 and b is not None and "nut_t" in b:
+            nut = self.networks["nut"](torch.cat([b["x"], b["y"], b["z"], b["params"]], dim=1)).view(-1, 1)
+            floor = self.networks["nut"].nu_t_min
+            sq = (torch.log(nut) - torch.log(b["nut_t"].clamp_min(floor))) ** 2
+            nut_data = self._seg_mean(sq, b["gid"], b["ng"]).mean()
+            ploss = ploss + nut_w * nut_data
+            extra["nut_data"] = float(nut_data)
         ploss.backward()
         if self.grad_clip > 0:
             torch.nn.utils.clip_grad_norm_(self.networks["nut"].parameters(), self.grad_clip)
         self.opt_nut.step()
 
-        return {"total": float(total), **{c: float(comp[c]) for c in COMPONENTS}}
+        return {"total": float(total), **{c: float(comp[c]) for c in COMPONENTS}, **extra}
+
+    def _resample(self) -> None:
+        """Full export: redraw every group's velocity / collocation / wall batch."""
+        for g in self.bundle.groups:
+            resample_group(g, self._rng, *self._batch_sizes)
+        self._build_batched()
 
     @torch.no_grad()
-    def _velocity_rel_l2(self, data: Dict[str, torch.Tensor]) -> float:
+    def _velocity_rel_l2(self, data) -> float:
+        if isinstance(data, list):              # full export: one set per group, averaged
+            return float(np.mean([self._velocity_rel_l2(d) for d in data]))
         net_in = torch.cat([data["x"], data["y"], data["z"], data["params"]], dim=1)
         pred = torch.cat([self.networks["u"](net_in), self.networks["v"](net_in),
                           self.networks["w"](net_in)], dim=1)
@@ -513,6 +578,8 @@ class Trainer:
             losses = self.train_step()
             self.sched.step()
             self.sched_nut.step()
+            if self.full_export and epoch % int(self.full_export.get("resample_interval", 250)) == 0:
+                self._resample()
 
             # Stable model-selection monitor. The adaptive-weighted ``total`` is
             # non-stationary (its scale jumps when the loss weights update), so
@@ -530,6 +597,8 @@ class Trainer:
                 # Show ALL raw component losses (not just a subset) so training is
                 # fully observable; loss_history.csv stores the same columns.
                 comp = "  ".join(f"{c[:4]}={losses[c]:.2e}" for c in COMPONENTS)
+                if "nut_data" in losses:
+                    comp += f"  nutD={losses['nut_data']:.2e}"
                 # Cumulative throughput + ETA: gives an honest wall-clock estimate
                 # for the run (used for the CFD-vs-surrogate timing comparison).
                 done = epoch - self.start_epoch

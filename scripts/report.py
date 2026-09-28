@@ -13,6 +13,15 @@ evaluate            Score every reported run against CFD from its saved checkpoi
 kfold-table         Leave-one-diameter-out generalization table -> report/tables/ as
                     Markdown + CSV + LaTeX.
 error-vs-diameter   Held-out error against the in-sample floor -> report/figures/.
+rescore             Re-score every reported run on XY, XZ and 3D points with the full
+                    error vector, beside the CFD-interpolation baselines
+                    (``analysis.rescore``) -> report/metrics/_rescore, report/tables/.
+score-full          Score models and baselines on the whole-vessel exports: test cubes,
+                    slabs, whole-wall WSS, eddy viscosity (``analysis.full_scoring``).
+consistency         Physical consistency (divergence, no-slip, pressure) of models vs
+                    interpolation on held-out cases (``analysis.consistency``).
+infer-hidden        Wall shear and pressure a velocity-only model infers, vs interpolated
+                    velocity (``analysis.hidden_fields``).
 
 Usage:
     python scripts/report.py evaluate
@@ -35,7 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from idealaorta_pinn.analysis import figures, metrics  # noqa: E402
+from idealaorta_pinn.analysis import consistency, figures, full_scoring, hidden_fields, metrics, rescore  # noqa: E402
 
 _DEFAULT_FOLDS = ["2.0:stageB_kfold_hold2p0",
                   "2.3:stageB_richerloo_f16",
@@ -70,8 +79,19 @@ def main() -> None:
     p_e.add_argument("--out", default="error_vs_diameter",
                      help="basename under report/figures/")
 
+    # full tools with their own options: each module owns add_arguments / run
+    for name, module, help_ in (("rescore", rescore, "re-score runs on every point set"),
+                                ("score-full", full_scoring, "score on the whole-vessel exports"),
+                                ("consistency", consistency, "physical consistency vs interpolation"),
+                                ("infer-hidden", hidden_fields, "hidden WSS / pressure from velocity")):
+        p = sub.add_parser(name, help=help_, description=module.__doc__.splitlines()[0])
+        module.add_arguments(p)
+        p.set_defaults(run=module.run)
+
     args = ap.parse_args()
-    if args.cmd == "evaluate":
+    if hasattr(args, "run"):
+        args.run(args)
+    elif args.cmd == "evaluate":
         metrics.evaluate_runs(runs=args.runs, device=args.device, out=args.out)
     elif args.cmd == "kfold-table":
         metrics.kfold_table(folds=args.folds, phases=args.phases, out=args.out,

@@ -1,0 +1,17 @@
+# Pilot stage 1: physics-weight selection (frozen 2026-09-25, revision/PLAN.md section 5).
+# One problem (Case 1, peak systole, 2.5 mm grid, draw 0); each physics arm at three
+# weights, 10k steps. The weight with the lowest held-out *observation* error is kept
+# for every later stage; hidden targets are never consulted.
+name: pilot_select
+cases: [1]
+windows:
+  systole: {times: [1775, 1780], target: 1780}
+draws: [[2.5, 0]]          # [grid_mm, seed]; the network seed equals the draw seed
+steps: 10000
+arms:
+  - {arm: data, closure: oracle, wphys: [0.0]}
+  - {arm: cont, closure: oracle, wphys: [0.01, 0.1, 1.0]}
+  - {arm: steady, closure: oracle, wphys: [0.01, 0.1, 1.0]}
+  - {arm: unsteady, closure: oracle, wphys: [0.01, 0.1, 1.0]}
+  - {arm: unsteady, closure: lam, wphys: [0.01, 0.1, 1.0]}
+baselines: []

@@ -1,9 +1,10 @@
 """Central path and configuration management for IdealAorta-PINN.
 
 Everything that needs a filesystem path goes through here so that no other
-module hardcodes folder names. The raw CFD case folders live under
-``data/raw/``; nothing downstream depends on their (messy) original names
-because discovery is done by the case registry.
+module hardcodes folder names. Raw CFD exports live under
+``data/raw/`` (``legacy_2025/`` for the original per-case folders, discovered by the
+case registry; ``full_2026-09/`` for the whole-domain exports, converted to the
+parquet cache under ``data/processed/full/``).
 """
 
 from __future__ import annotations
@@ -22,7 +23,17 @@ PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 CONFIG_DIR: Path = PROJECT_ROOT / "configs"
 DATA_DIR: Path = PROJECT_ROOT / "data"
 RAW_DIR: Path = DATA_DIR / "raw"
+# Two export vintages, both from the rigid-wall CFD runs:
+#   full_2026-09  whole-domain exports (fluid volume, whole wall, inlet, outlet) at five
+#                 instants per case; the canonical source for new work
+#   legacy_2025   the original per-case folders behind the original study. Not kept locally
+#                 (archived on brosnan): their content lives in data/processed/ (parquet cache,
+#                 incl. the x-WSS polylines), data/results_on_slices.csv and
+#                 report/figures/cfdpost/. Restore it here only to rebuild the registry/cache.
+FULL_RAW_DIR: Path = RAW_DIR / "full_2026-09"
+LEGACY_RAW_DIR: Path = RAW_DIR / "legacy_2025"
 PROCESSED_DIR: Path = DATA_DIR / "processed"
+FULL_DIR: Path = PROCESSED_DIR / "full"            # parquet cache of the full_2026-09 exports
 REGISTRY_PATH: Path = DATA_DIR / "registry.json"
 
 # Trained models live in a top-level models/ folder (one subfolder per experiment).
@@ -35,6 +46,9 @@ METRICS_DIR: Path = REPORT_DIR / "metrics"          # CSV/JSON + human-readable 
 TABLES_DIR: Path = REPORT_DIR / "tables"            # reference tables and paper CSVs
 INTERACTIVE_DIR: Path = REPORT_DIR / "interactive"  # rotatable 3D Plotly HTML
 LOGS_DIR: Path = REPORT_DIR / "logs"                # run logs, one subfolder per experiment
+# Sparse-reconstruction study (idealaorta_pinn.reconstruction): per-run JSONs, oracles,
+# baselines, observation masks and study summaries, one subfolder per kind.
+RECON_METRICS_DIR: Path = METRICS_DIR / "reconstruction"
 
 # Manuscript: LaTeX fragments, bibliography, and a copy of the figures used.
 PAPER_DIR: Path = PROJECT_ROOT / "paper"

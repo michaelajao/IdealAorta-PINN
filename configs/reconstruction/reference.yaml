@@ -1,0 +1,7 @@
+# Training-free reference audits (momentum budget, pressure and WSS oracles) on every case
+# at peak systole and end diastole. du/dt uses the nearest snapshots within 50 ms on each side.
+name: reference
+cases: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+times: [1780, 2400]
+pressure_cases: [1, 2, 3, 4, 5, 6, 7, 8, 9]     # pressure oracle on the diseased cases
+wss_sources: [full]

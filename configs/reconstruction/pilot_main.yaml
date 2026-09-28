@@ -1,0 +1,17 @@
+# Pilot stage 2: the registered comparison on the development cases (frozen 2026-09-25).
+# Gate (failed 2026-09-26): unsteady + oracle beats the best non-PINN comparator by >= 15 %
+# on both aneurysm-wall WSS and pressure, in both cases, at systole.
+name: pilot_main
+cases: [1, 9]
+windows:
+  systole: {times: [1775, 1780], target: 1780, draws: [[2.5, 0], [2.5, 1]]}
+  diastole: {times: [2390, 2400], target: 2400, draws: [[2.5, 0]]}
+steps: 20000
+arms:
+  - {arm: data, closure: oracle, wphys: [0.0]}
+  - {arm: cont, closure: oracle, wphys: [0.01]}
+  - {arm: steady, closure: oracle, wphys: [0.01]}
+  - {arm: unsteady, closure: oracle, wphys: [0.01]}
+  - {arm: unsteady, closure: lam, wphys: [0.01]}
+baselines: [linear, rbf]
+floor_draw: [2.5, 0]       # the CFD-velocity floor, once per case and window

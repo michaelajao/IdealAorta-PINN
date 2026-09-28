@@ -9,9 +9,21 @@
 # ============================================================================
 
 # --- CFD data (large: ~1.1 GB raw + ~0.4 GB processed parquet/npz cache) ---
-data/raw/
-data/processed/
-!data/registry.json            # small JSON case index — keep under version control
+#     Everything under data/ is ignored (raw exports of every vintage, parquet caches)
+#     except the two small tracked index files. The CFD data belong to the coauthors
+#     and must never reach this public repository.
+data/*
+!data/registry.json
+!data/results_on_slices.csv
+
+# --- Revision workspace: referee reports, plan, coauthor drafts, result JSONs ---
+#     Private; kept out of the public repo like paper/. Back it up separately.
+revision/
+
+# --- Cluster / queue logs (brosnan, Sulis/Slurm) ---
+logs_rev2/
+slurm-*.out
+slurm-*.err
 
 # --- Trained models: checkpoints + per-run training artifacts + run logs ---
 #     (loss_history.csv / normalizer.json live under models/<run>/; regenerate
@@ -53,3 +65,11 @@ CLAUDE.md
 
 # --- off-book local experiments: not part of the reported study ---
 *.local.yaml
+
+# --- Scratch: field-map arrays, generator logs, manuscript review drafts ---
+#     Written by scripts/manuscript/*; holds paper text, so it stays private.
+tmp/
+archive/
+
+# --- Local LaTeX (MiKTeX) state ---
+.miktex/

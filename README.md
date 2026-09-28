@@ -35,7 +35,7 @@ same modelling stack and PINN "house style" as the group's `TAA-aneurysm` and
 
 | Group      | Inlet Ø (cm)    | Asymmetry β = r/R                                     | Notes                                      |
 |------------|-----------------|--------------------------------------------------------|---------------------------------------------|
-| Aneurysmal | 2.0 / 2.3 / 2.6 | 1.0 (axisymmetric), 2.08 (anterior), 0.48 (posterior) | fixed 4.0 cm saccular bulge at mid-vessel  |
+| Aneurysmal | 2.0 / 2.3 / 2.6 | 1.0 (axisymmetric), 0.48 (anterior), 2.08 (posterior) | fixed 4.0 cm saccular bulge at mid-vessel  |
 | Healthy    | 2.0 / 2.3 / 2.6 | — (smooth linear taper)                               | outlet = 80% of inlet diameter             |
 
 Each case is exported by ANSYS CFD-Post at two phases of the cardiac cycle (systole, diastole) as:
@@ -75,14 +75,27 @@ held-out diameter. Three folds together cover every diameter — see
 
 ## Data
 
-The 12 CFD cases (raw CFD-Post exports **and** the parsed parquet/npz cache) are **not tracked in
-this git repository** — at ~1.1 GB raw + ~0.2 GB processed they don't belong in git history.
+The CFD exports (raw CSVs **and** the parsed parquet caches) are **not tracked in this git
+repository**; everything under `data/` is ignored except the two small index files below.
+Two export vintages of the same rigid-wall CFD runs live under one tree:
 
-Once obtained, place the 12 `Case *` folders (as exported by ANSYS CFD-Post) under `data/raw/`,
-matching the layout `data/raw/Case <n>, <diameter> Inlet ... /PINNS/*.csv`, then run the data
-pipeline below to build the registry and parquet cache. `data/registry.json` (the small, derived
-case index) and `data/results_on_slices.csv` (an independent slice-averaged CFD validation table)
-are the only data artifacts tracked in git.
+```
+data/
+  raw/
+    full_2026-09/Case <n>/<time>.csv     # whole-domain exports, five CFD-Post blocks per file:
+                                        #   fluid volume, lumen wall (+ aneurysm zone), inlet, outlet;
+                                        #   1.775-1.815 s (systole) and 2.39/2.4 s (diastole); ~8.4 GB
+  processed/                            # parquet/npz cache of the original exports (3D streamlines,
+                                        #   aneurysm-wall clip, XY/XZ planes, XY-plane x-WSS
+                                        #   polylines); canonical, since those raw folders are
+                                        #   archived off-repo
+  processed/full/                       # per-block parquet of the whole-domain exports (README inside)
+  registry.json                         # derived case index (tracked)
+  results_on_slices.csv                 # slice-averaged CFD validation table (tracked)
+```
+
+Raw filenames are kept verbatim; their snapshot times are interpreted in
+`idealaorta_pinn/data/full_export.py` (Case 1's `1.755.csv` is the 1.775 s snapshot).
 
 ## Code layout
 
@@ -90,9 +103,10 @@ are the only data artifacts tracked in git.
 idealaorta_pinn/
   config.py            # paths, physical constants, pulsatile inlet waveform
   data/
-    registry.py         # discover data/raw/Case* -> data/registry.json (case metadata)
-    cfdpost.py           # robust ANSYS CFD-Post CSV parser (column + duplicate handling)
-    cache.py             # CFD-Post CSV -> parquet/npz cache
+    registry.py         # discover data/raw/legacy_2025/Case* -> data/registry.json (case metadata)
+    cfdpost.py           # ANSYS CFD-Post CSV parser (single- and multi-block exports)
+    cache.py             # legacy CFD-Post CSV -> parquet/npz cache
+    full_export.py       # whole-domain exports: raw CSV -> per-block parquet, snapshot loader
     normalize.py         # per-case/phase standardization (Normalizer)
     geometry.py           # wall-normal estimation (Open3D, PCA fallback) for WSS
   pinn/
@@ -104,27 +118,47 @@ idealaorta_pinn/
     predict.py            # load a trained checkpoint, predict in physical units
     metrics.py              # error metrics vs CFD; cross-run evaluation + LODO table
     figures.py               # static (matplotlib) + interactive (Plotly 3D) figures
+    rescore.py               # re-score runs on every point set beside interpolation baselines
+    full_scoring.py          # score models and baselines on the whole-vessel exports
+    consistency.py           # divergence / no-slip / pressure consistency vs interpolation
+    hidden_fields.py         # wall shear and pressure inferred from velocity-only models
+  reconstruction/        # sparse-observation reconstruction study (see below)
+    numerics.py            # least-squares node gradients, sparse gradient operator
+    problem.py             # one problem: case, time window, observation grid, hidden targets
+    fields.py              # space-time neural field + RANS-mean residuals
+    postprocess.py         # velocity -> pressure (momentum integration) and wall shear, scores
+    interpolation.py       # linear / RBF / tuned / space-time RBF comparators
+    reference.py           # training-free audits: momentum budget, pressure and WSS oracles
+    training.py            # fit and score one neural-field arm
+    study.py               # study configs -> jobs; selection, summaries, hypothesis tests
 
 scripts/
-  prepare.py              # registry / cache subcommands (data pipeline)
+  prepare.py              # registry / cache / full subcommands (data pipeline)
   run.py                  # train + validate + figures for one config (the main entry point)
-  report.py               # post-training: evaluate / kfold-table / error-vs-diameter
+  report.py               # post-training: evaluate / kfold-table / error-vs-diameter /
+                          #   rescore / score-full / consistency / infer-hidden
+  reconstruct.py          # reconstruction study: audit / wss-oracle / baseline / train /
+                          #   diagnose / jobs / select / summarize / confirm
+  manuscript/             # figure/table generators for the September 2026 manuscript
   queue.sh                # run configs back-to-back, each gated on real GPU headroom
+  queue_jobs.sh           # run a file of reconstruct.py jobs with bounded concurrency
+  sulis/                  # setup.sh (conda env on Sulis) and array.slurm (one job line per task)
   regen_interactive.sh    # rebuild the rotatable 3D HTML for every run (inference only)
 
 configs/                  # one YAML per experiment (stageA_case*_insample per-case fits,
-                           # other stageA_* de-risking, stageB_* LODO folds), + cases/constants.yaml
+                           # other stageA_* de-risking, stageB_* LODO folds, diag_* / lodo_full_*
+                           # whole-export runs), cases/constants.yaml, and reconstruction/*.yaml
+tests/                    # pytest: residual derivatives, study plumbing, data conversion
 ```
 
 ## Setup
 
-Python 3.11 + PyTorch (CUDA build matching your GPU) plus a short list of standard scientific
-packages — there is no `pyproject.toml`/`requirements.txt`; each script inserts the repo root onto
-`sys.path`, so nothing needs to be installed as a package:
+Python 3.11 + PyTorch (CUDA build matching your GPU) plus the packages in `requirements.txt`.
+Each script inserts the repo root onto `sys.path`, so nothing needs to be installed as a package:
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cu121   # match your CUDA version
-pip install numpy pandas pyyaml scipy scikit-learn matplotlib plotly
+pip install torch --index-url https://download.pytorch.org/whl/cu124   # match your CUDA version
+pip install -r requirements.txt
 ```
 
 `open3d` is an optional dependency (`pip install open3d`) for higher-quality mesh wall-normal
@@ -135,9 +169,10 @@ installed or fails to import.
 
 ```bash
 # 1) data prep (once data/raw/ is populated -- see "Data" above)
-python scripts/prepare.py registry             # discover cases -> data/registry.json
-python scripts/prepare.py cache                # parse CFD-Post CSVs -> data/processed/*.parquet
-#    (or: scripts/prepare.py all  -- registry, then cache, in one go)
+python scripts/prepare.py registry             # discover legacy cases -> data/registry.json
+python scripts/prepare.py cache                # parse legacy CFD-Post CSVs -> data/processed/*.parquet
+python scripts/prepare.py full                 # whole-domain CSVs -> data/processed/full/*.parquet
+#    (or: scripts/prepare.py all  -- registry, cache, then full)
 
 # 2) train + validate + generate figures (one workflow, since they share the trained model)
 python scripts/run.py --config configs/stageA_case1.yaml                       # Stage A de-risk (Case 1)
@@ -168,6 +203,24 @@ publication, copy it out deliberately rather than committing the whole directory
 `--device cuda` (default) and, if you hit memory limits, lower `loaders.max_velocity_points` or
 `physics.n_collocation` in the config.
 
+### Sparse-reconstruction study
+
+Recovers hidden velocity, gauge pressure and aneurysm-wall shear from velocity sampled on a
+grid at two nearby instants, and compares space-time neural fields (with and without physics
+in the loss) against interpolation, all scored through the same velocity-to-pressure and
+wall-shear pipeline. Studies are defined in `configs/reconstruction/`; results go to
+`report/metrics/reconstruction/` and checkpoints to `models/rev2_*`.
+
+```bash
+python scripts/reconstruct.py audit --case 1 --t 1780          # do the CFD fields satisfy the momentum forms?
+python scripts/reconstruct.py jobs confirm --kind train > jobs_train.txt
+python scripts/reconstruct.py jobs confirm --kind baseline > jobs_baseline.txt
+scripts/queue_jobs.sh jobs_train.txt 6 gpu                    # GPUs from $GPUS (default "0 1")
+scripts/queue_jobs.sh jobs_baseline.txt 3 cpu
+python scripts/reconstruct.py confirm confirm                  # pre-registered hypothesis tests
+python -m pytest tests                                         # derivative and plumbing checks
+```
+
 When re-running an experiment that already has outputs, `scripts/run.py` archives the existing
 model/report folders into sibling `_archive/` directories before starting the new run. Pass
 `--overwrite-output` to replace outputs in place instead, or `--seed N` / `--name-suffix <tag>` to
@@ -188,13 +241,30 @@ cd IdealAorta-PINN
 pip install torch --index-url https://download.pytorch.org/whl/cu121
 python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 
-# copy data/raw/ (or the original CFD export) onto the node, then:
-python scripts/prepare.py registry
-python scripts/prepare.py cache
+# copy data/raw/ (or the original CFD exports) onto the node, then:
+python scripts/prepare.py all
 
 tmux new -s ideal
 python scripts/run.py --config configs/stageB_richerloo_f16.yaml   # a LODO fold (train 6, predict held-out diameter)
 #   detach: Ctrl-b then d;  reattach: tmux attach -t ideal
+```
+
+### Sulis (Slurm)
+
+The reconstruction study is many small independent jobs (~2.5 GB GPU memory, 10-110 min
+each), which suits a Slurm job array on Sulis's L40 nodes (account `su003-csmm`). The code
+arrives by `git clone`; the gitignored inputs are copied once from a machine that has them:
+
+```bash
+# from the local machine (one 2FA prompt): whole-domain cache, registry, study references
+tar -cf - data/processed/full data/registry.json report/metrics/reconstruction   | ssh sulis "mkdir -p ~/IdealAorta-PINN && tar -xf - -C ~/IdealAorta-PINN"
+
+# on Sulis
+bash scripts/sulis/setup.sh                                    # once: conda env "idealaorta"
+python scripts/reconstruct.py jobs confirm --kind train > jobs_train.txt
+mkdir -p report/logs/reconstruction/slurm
+sbatch --array=1-$(grep -c . jobs_train.txt)%40 scripts/sulis/array.slurm jobs_train.txt
+squeue -u $USER                                                # progress; results as on brosnan
 ```
 
 ## Citation

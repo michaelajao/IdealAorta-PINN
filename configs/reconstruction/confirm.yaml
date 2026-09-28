@@ -1,0 +1,25 @@
+# Confirmatory study (frozen 2026-09-26 before any run on these cases).
+# Candidate NF-PI: continuity-constrained space-time field (cont, w 0.01) + momentum
+# integration in post-processing. Cases 2-8 were never used in reconstruction development.
+name: confirm
+cases: [2, 3, 4, 5, 6, 7, 8]
+windows:
+  systole: {times: [1775, 1780], target: 1780, case_times: {2: [1780, 1788]}}   # Case 2 has no 1.775 s file
+  diastole: {times: [2390, 2400], target: 2400}
+draws: [[2.5, 0], [2.5, 1], [2.5, 2], [1.5, 0], [4.0, 0]]
+steps: 20000
+arms:
+  - {arm: cont, closure: oracle, wphys: [0.01]}
+  - {arm: data, closure: oracle, wphys: [0.0]}
+baselines: [linear, rbf]
+floor_draw: [2.5, 0]
+robustness_baselines: [rbf_tuned, rbf_spacetime]    # added 2026-09-27 after the verdict
+
+# Pre-registered hypotheses: units = cases x windows at the primary grid, averaged over draws.
+hypotheses:
+  primary_grid: 2.5
+  candidate: cont
+  comparator: rbf
+  H1_pressure: {metric: pressure/unsteady+mut/p_rel_l2, min_wins: 12, max_median_ratio: 0.6}
+  H2_wss: {metric: wss/wss_mag_rel_l2, min_wins: 12, max_median_ratio: 0.8}
+  guardrail_velocity: {metric: velocity/vel_rel_l2}

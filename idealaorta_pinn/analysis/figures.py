@@ -148,6 +148,116 @@ def plane_comparison(model: TrainedModel, records: Sequence[CaseRecord], case_id
     return path
 
 
+_PLANE_NAMES = {"XY": "Medial (XY)", "XZ": "Transverse (XZ)"}
+
+
+def _plane_fields(model: TrainedModel, rec: CaseRecord, kind: str, phase: str,
+                  max_points: int, tiles: Optional[Dict] = None):
+    """(coords, CFD uvw, PINN uvw) on one CFD slice, sampled as ``velocity_metrics`` does."""
+    from ..data.loaders import slice_tile_mask
+    df = load_points(rec, kind, phase)
+    if df is None:
+        raise ValueError(f"No {kind} data for case {rec.case_id} {phase}")
+    if tiles:
+        df = df[slice_tile_mask(df[["x", "y", "z"]].to_numpy(float), kind,
+                                float(tiles["tile_mm"]), int(tiles.get("parity", 1)))]
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+    cfd = df[["u", "v", "w"]].to_numpy(float)
+    beta = rec.beta if rec.beta is not None else 1.0
+    p = predict_physical(model, coords, rec.inlet_diameter_cm, rec.disease_flag, phase, beta=beta)
+    return coords, cfd, np.column_stack([p["u"], p["v"], p["w"]])
+
+
+def plane_comparison_pair(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
+                          phase: str, kinds: Sequence[str] = ("XY", "XZ"),
+                          max_points: int = 40_000, out_dir: Path = FIGURES_DIR,
+                          width_in: float = 7.0, tag: str = "") -> Path:
+    """Velocity figure in the manuscript layout: one row per plane, CFD | PINN | error.
+
+    As in the original paper, CFD and PINN sit side by side with the error beside them,
+    and every label is outside the axes (column titles, plane names on the y axis), so
+    no text covers the flow. What the referees asked for is kept:
+      * the error column is ``|u_PINN - u_CFD|``, the magnitude of the error VECTOR, and
+        its colour bar says so, so a direction error is not read as a speed error;
+      * CFD, PINN and error share one scale whose ceiling is the larger of the two
+        fields' 99.5th-percentile speeds, so an over-prediction shows as colour and an
+        error reads directly against the flow speed;
+      * each panel title carries its own numbers: the CFD and PINN maxima, and the vector
+        NRMSE with the 95th/99th-percentile error in m/s;
+      * drawn at print width (7 in), so the 7-9 pt text stays that size on the page.
+    Saved as PNG (300 dpi) and PDF (vector text, rasterized points).
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from .metrics import field_error_stats
+
+    rec = cases_by_id(records)[case_id]
+    planes = []
+    for kind in kinds:
+        coords, cfd, pinn = _plane_fields(model, rec, kind, phase, max_points)
+        a, b = _plane_axes(coords)
+        cs, ps = np.linalg.norm(cfd, axis=1), np.linalg.norm(pinn, axis=1)
+        err = np.linalg.norm(pinn - cfd, axis=1)
+        stats = field_error_stats(pinn, cfd, float(np.quantile(cs, 0.995)))
+        planes.append({"kind": kind, "h": coords[:, a] * 100, "v": coords[:, b] * 100,
+                       "lh": "xyz"[a], "lv": "xyz"[b], "fields": (cs, ps, err), "stats": stats})
+
+    vmax = max(max(float(np.quantile(p["fields"][0], 0.995)), float(np.quantile(p["fields"][1], 0.995)))
+               for p in planes)
+    top = max(max(p["fields"][1].max(), p["fields"][2].max()) for p in planes)
+    extend = "max" if top > vmax else "neither"
+    columns = (("CFD", "turbo"), ("PINN", "turbo"), ("|u$_{PINN}$ − u$_{CFD}$|", "magma"))
+
+    with plt.rc_context({"font.size": 8, "axes.titlesize": 8, "axes.labelsize": 8,
+                         "xtick.labelsize": 7, "ytick.labelsize": 7}):
+        # every panel shares the x range; rows take the height of their own plane
+        h_lo = min(p["h"].min() for p in planes) - 0.2
+        h_hi = max(p["h"].max() for p in planes) + 0.2
+        ratios = [(p["v"].max() - p["v"].min() + 0.4) / (h_hi - h_lo) for p in planes]
+        panel_w = (width_in - 0.9) / 3
+        fig, axes = plt.subplots(len(planes), 3, figsize=(width_in, sum(ratios) * panel_w + 0.5 * len(planes) + 0.9),
+                                 gridspec_kw={"height_ratios": ratios}, constrained_layout=True,
+                                 squeeze=False, sharex=True)
+        mappables = {}
+        for i, p in enumerate(planes):
+            cs, ps, err = p["fields"]
+            st = p["stats"]
+            titles = (f"CFD\nmax {cs.max():.2f} m/s", f"PINN\nmax {ps.max():.2f} m/s",
+                      f"|u$_{{PINN}}$ − u$_{{CFD}}$|\nNRMSE {st['vel_nrmse_vec']:.2f}, "
+                      f"p95 {st['err_p95_ms']:.2f}, p99 {st['err_p99_ms']:.2f} m/s")
+            for j, ((_, cmap), values) in enumerate(zip(columns, p["fields"])):
+                ax = axes[i, j]
+                mappables[j] = ax.scatter(p["h"], p["v"], c=values, s=0.4, cmap=cmap, vmin=0, vmax=vmax,
+                                          rasterized=True, linewidths=0)
+                ax.set_aspect("equal")
+                ax.set_xlim(h_lo, h_hi)
+                ax.set_ylim(p["v"].min() - 0.2, p["v"].max() + 0.2)
+                ax.set_title(titles[j])
+                ax.set_ylabel(f"{_PLANE_NAMES.get(p['kind'], p['kind'])}\n{p['lv']} (cm)" if j == 0 else "")
+                if j > 0:
+                    ax.tick_params(labelleft=False)
+                if i == len(planes) - 1:
+                    ax.set_xlabel(f"{p['lh']} (cm)")
+        # horizontal colour bars under their columns keep every label clear of the data
+        fig.colorbar(mappables[1], ax=list(axes[:, :2].ravel()), location="bottom", shrink=0.6,
+                     aspect=40, extend=extend, label="speed (m/s)")
+        fig.colorbar(mappables[2], ax=list(axes[:, 2]), location="bottom", shrink=0.9,
+                     aspect=20, extend=extend, label="|u$_{PINN}$ − u$_{CFD}$| (m/s)")
+
+        out_dir = Path(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stem = f"case{case_id:02d}_{phase}_velocity_pair{('_' + tag) if tag else ''}"
+        path = out_dir / f"{stem}.png"
+        fig.savefig(path, dpi=300)
+        fig.savefig(out_dir / f"{stem}.pdf", dpi=300)
+        plt.close(fig)
+    return path
+
+
 def convergence_curves(history_csv: Path, out_dir: Path = FIGURES_DIR,
                        fname: str = "convergence.png", title: str = "") -> Path:
     """Training convergence: component losses + model-selection monitor vs epoch.

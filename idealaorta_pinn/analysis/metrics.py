@@ -139,13 +139,71 @@ def secondary_flow_fraction(uvw: np.ndarray, direction: Optional[np.ndarray] = N
     return float(np.mean(np.linalg.norm(perp, axis=1) / s))
 
 
+def field_error_stats(pred: np.ndarray, true: np.ndarray, phase_u_ref: float) -> Dict[str, float]:
+    """Point-wise velocity error statistics, normalized by ``phase_u_ref`` unless in m/s.
+
+    ``vel_nrmse_vec`` is the RMS over points of the error-vector magnitude
+    ``|u_pred - u_true|``, the field error the revised manuscript reports.
+    ``vel_nrmse_comp`` averages the squared error over points AND the three components,
+    so it equals ``vel_nrmse_vec / sqrt(3)``; it is what ``vel_nrmse_phase`` has always
+    held and what the submitted manuscript quoted, kept so old numbers stay traceable.
+    Percentiles, exceedance fractions and the slow/fast split expose the local errors
+    an RMS averages away; ``overshoot_q995`` compares the two fields' 99.5th-percentile
+    speeds, and ``frac_reversed`` counts points whose predicted direction is more than
+    90 degrees off the CFD direction (both speeds above 5% of the phase scale).
+    """
+    nan = float("nan")
+    u = max(float(phase_u_ref), 1e-9)
+    err = np.linalg.norm(pred - true, axis=1)
+    ts = np.linalg.norm(true, axis=1)
+    ps = np.linalg.norm(pred, axis=1)
+    e = err / u
+    sig = (ts > 0.05 * u) & (ps > 0.05 * u)
+    cos = (np.sum(pred[sig] * true[sig], axis=1) / (ps[sig] * ts[sig])) if sig.any() else None
+    slow = ts < 0.2 * u
+    q_true, q_pred = float(np.quantile(ts, 0.995)), float(np.quantile(ps, 0.995))
+
+    def _rms(mask: np.ndarray) -> float:
+        return float(np.sqrt(np.mean(err[mask] ** 2)) / u) if mask.any() else nan
+
+    return {
+        "vel_nrmse_vec": float(np.sqrt(np.mean(err ** 2)) / u),
+        "vel_nrmse_comp": float(np.sqrt(np.mean((pred - true) ** 2)) / u),
+        "err_p50": float(np.percentile(e, 50)), "err_p90": float(np.percentile(e, 90)),
+        "err_p95": float(np.percentile(e, 95)), "err_p99": float(np.percentile(e, 99)),
+        "err_max": float(e.max()),
+        "err_p95_ms": float(np.percentile(err, 95)), "err_p99_ms": float(np.percentile(err, 99)),
+        "err_max_ms": float(err.max()),
+        "frac_err_gt_10": float(np.mean(e > 0.10)), "frac_err_gt_25": float(np.mean(e > 0.25)),
+        "frac_err_gt_50": float(np.mean(e > 0.50)),
+        "nrmse_vec_slow": _rms(slow), "nrmse_vec_fast": _rms(~slow), "frac_slow": float(slow.mean()),
+        "speed_q995_cfd": q_true, "speed_q995_pinn": q_pred,
+        "speed_max_cfd": float(ts.max()), "speed_max_pinn": float(ps.max()),
+        "overshoot_q995": (q_pred / q_true) if q_true > 1e-9 else nan,
+        "frac_reversed": float(np.mean(cos < 0.0)) if cos is not None else nan,
+    }
+
+
+_ERROR_STAT_KEYS = tuple(field_error_stats(np.ones((2, 3)), np.ones((2, 3)), 1.0))
+
+
 def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id: int,
-                     phase: str, kind: str = "XZ", max_points: int = 60_000) -> Optional[Dict]:
-    """Velocity error of the surrogate on a CFD slice (default XZ plane)."""
+                     phase: str, kind: str = "XZ", max_points: int = 60_000,
+                     tiles: Optional[Dict] = None) -> Optional[Dict]:
+    """Velocity error of the surrogate on a CFD slice (default XZ plane) or the 3D points.
+
+    ``tiles`` (``{"tile_mm": 2.0, "parity": 1}``) scores only one checkerboard colour of
+    an XY/XZ slice -- the held-out colour of a ``slice_tiles`` diagnostic run.
+    """
+    from ..data.loaders import SLICE_PLANE_AXES, slice_tile_mask
     rec = cases_by_id(records)[case_id]
     df = load_points(rec, kind, phase)
     if df is None or not {"u", "v", "w"}.issubset(df.columns):
         return None
+    if tiles and kind in SLICE_PLANE_AXES:
+        keep = slice_tile_mask(df[["x", "y", "z"]].to_numpy(float), kind,
+                               float(tiles["tile_mm"]), int(tiles.get("parity", 1)))
+        df = df[keep]
     if len(df) > max_points:
         df = df.sample(max_points, random_state=0)
     coords = df[["x", "y", "z"]].to_numpy(float)
@@ -194,6 +252,8 @@ def velocity_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
         "speed_ccc": nan if degenerate else _ccc(pred["speed"], true_speed),
         "div_rms": div["div_rms"], "div_mean_abs": div["div_mean_abs"],
         "div_rel": div["div_rel"],
+        **({k: nan for k in _ERROR_STAT_KEYS} if degenerate
+           else field_error_stats(pred_v, true, phase_u_ref)),
         # M4: floor at 5% of the phase's own peak speed; reference direction from
         # the CFD field's significant-speed points, shared by both fractions.
         # NaN on a degenerate slice (no CFD field to derive the axis/floor from).
@@ -333,6 +393,134 @@ def pressure_metrics(model: TrainedModel, records: Sequence[CaseRecord], case_id
         "dp_range_cfd": rng_cfd, "dp_range_pinn": rng_pinn,
         "dp_range_ratio": (rng_pinn / rng_cfd) if rng_cfd > 1e-9 else float("nan"),
     }
+
+
+# ---------------------------------------------------------------------------
+# CFD-interpolation baselines for the leave-one-diameter-out folds
+# ---------------------------------------------------------------------------
+# The floor a diameter-conditioned surrogate must beat to earn the word "surrogate".
+# Restored from the Block-4 comparator (scripts/baseline_cfd_interp.py, removed in
+# b701e24) as functions, so the baseline is scored on exactly the points and with
+# exactly the statistics the PINN is. It sees only what a fold's PINN trains on --
+# the TRAINING cases' 3D streamline velocity and wall WSS -- registered onto the held
+# case by nearest neighbour in each case's own normalized frame (centre + isotropic
+# half-extent of its 3D streamline cloud), since the idealized meshes are scaled
+# copies but not point-matched. It is optimistic in one respect, stated with every
+# number it produces: it is told the held case's frame, i.e. its geometry extent.
+#
+#   blend           linear-in-diameter blend of the two bracketing training diameters;
+#                   an extrapolated diameter falls back to the nearest one
+#   nearest         the nearest training diameter, copied unchanged
+#   nearest_scaled  the nearest diameter rescaled by the analytic inlet-flow ratio
+#                   (velocity ~ Q/A ~ 1/d^2, Poiseuille WSS ~ Q/d^3; Q is shared)
+
+BASELINE_MODES = ("blend", "nearest", "nearest_scaled")
+
+
+def _case_frame(rec: CaseRecord, phase: str):
+    df = load_points(rec, "3D", phase)
+    if df is None:
+        return None
+    c = df[["x", "y", "z"]].to_numpy(float)
+    return c.mean(axis=0), max(0.5 * float((c.max(axis=0) - c.min(axis=0)).max()), 1e-9)
+
+
+def _baseline_neighbours(by: Dict[int, CaseRecord], held: CaseRecord,
+                         train_cases: Sequence[int], mode: str):
+    """([(record, weight), ...], tag) over the fold's same-symmetry training cases."""
+    d_h = held.inlet_diameter_cm
+    cand = [by[c] for c in train_cases
+            if by[c].symmetry == held.symmetry and by[c].disease_flag == held.disease_flag
+            and abs(by[c].inlet_diameter_cm - d_h) > 1e-6]
+    if not cand:
+        return [], "none"
+    lo = max((r for r in cand if r.inlet_diameter_cm < d_h), key=lambda r: r.inlet_diameter_cm,
+             default=None)
+    hi = min((r for r in cand if r.inlet_diameter_cm > d_h), key=lambda r: r.inlet_diameter_cm,
+             default=None)
+    if mode == "blend" and lo is not None and hi is not None:
+        w_lo = (hi.inlet_diameter_cm - d_h) / (hi.inlet_diameter_cm - lo.inlet_diameter_cm)
+        return [(lo, w_lo), (hi, 1.0 - w_lo)], f"blend({lo.inlet_diameter_cm}+{hi.inlet_diameter_cm})"
+    best = min(cand, key=lambda r: abs(r.inlet_diameter_cm - d_h))
+    return [(best, 1.0)], f"{mode}({best.inlet_diameter_cm})"
+
+
+def _baseline_transfer(by, held, phase, coords, train_cases, mode, source: str):
+    """Baseline prediction at ``coords`` of the held case: (values, tag) or (None, why).
+
+    ``source="3D"`` returns velocity (N,3) from the neighbours' 3D streamlines;
+    ``source="WSS"`` returns WSS magnitude (N,) from the neighbours' wall clouds.
+    """
+    from scipy.spatial import cKDTree
+    neigh, tag = _baseline_neighbours(by, held, train_cases, mode)
+    fh = _case_frame(held, phase)
+    if not neigh or fh is None:
+        return None, "no same-symmetry training neighbour"
+    dst = (coords - fh[0]) / fh[1]
+    out = None
+    for rec, w in neigh:
+        fs = _case_frame(rec, phase)
+        df = load_points(rec, source, phase)
+        if fs is None or df is None:
+            return None, f"case {rec.case_id} {phase} {source} missing"
+        src = (df[["x", "y", "z"]].to_numpy(float) - fs[0]) / fs[1]
+        _, idx = cKDTree(src).query(dst, k=1)
+        vals = (df[["u", "v", "w"]].to_numpy(float) if source == "3D"
+                else df["wss"].to_numpy(float))[idx]
+        if mode == "nearest_scaled":
+            ratio = rec.inlet_diameter_cm / held.inlet_diameter_cm
+            vals = vals * ratio ** (2 if source == "3D" else 3)
+        out = w * vals if out is None else out + w * vals
+    return out, tag
+
+
+def baseline_velocity_metrics(records: Sequence[CaseRecord], case_id: int, phase: str,
+                              kind: str, train_cases: Sequence[int], mode: str = "blend",
+                              max_points: int = 60_000) -> Optional[Dict]:
+    """``field_error_stats`` of a CFD-interpolation baseline on a held case's points.
+
+    Samples the points exactly as ``velocity_metrics`` does (same cap and seed), so a
+    baseline row and a PINN row for the same (case, phase, kind) score identical points.
+    """
+    by = cases_by_id(records)
+    rec = by[case_id]
+    df = load_points(rec, kind, phase)
+    if df is None or not {"u", "v", "w"}.issubset(df.columns):
+        return None
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    coords = df[["x", "y", "z"]].to_numpy(float)
+    true = df[["u", "v", "w"]].to_numpy(float)
+    q995 = float(np.quantile(np.linalg.norm(true, axis=1), 0.995))
+    if q995 < 1e-4:
+        return None
+    pred, tag = _baseline_transfer(by, rec, phase, coords, train_cases, mode, "3D")
+    if pred is None:
+        return None
+    return {"case": case_id, "phase": phase, "kind": kind, "mode": mode, "neighbours": tag,
+            **field_error_stats(pred, true, q995)}
+
+
+def baseline_wss_metrics(records: Sequence[CaseRecord], case_id: int, phase: str,
+                         train_cases: Sequence[int], mode: str = "blend",
+                         max_points: int = 20_000) -> Optional[Dict]:
+    """WSS rel-L2 and peak ratio of a baseline on the same wall points as ``wss_metrics``."""
+    by = cases_by_id(records)
+    rec = by[case_id]
+    df = load_points(rec, "WSS", phase)
+    if df is None or "wss" not in df.columns:
+        return None
+    if len(df) > max_points:
+        df = df.sample(max_points, random_state=0)
+    true_mag = df["wss"].to_numpy(float)
+    pred, tag = _baseline_transfer(by, rec, phase, df[["x", "y", "z"]].to_numpy(float),
+                                   train_cases, mode, "WSS")
+    if pred is None:
+        return None
+    return {"case": case_id, "phase": phase, "mode": mode, "neighbours": tag,
+            "wss_rel_l2": _rel_l2(pred, true_mag),
+            "wss_peak_ratio": float(pred.max() / true_mag.max()) if true_mag.max() > 1e-9
+            else float("nan")}
 
 
 def _json_safe(value):

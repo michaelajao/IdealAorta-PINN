@@ -1,6 +1,6 @@
 """Case discovery and registry.
 
-Walks ``data/raw/Case *`` folders, parses each (messy) folder name into
+Walks ``data/raw/legacy_2025/Case *`` folders, parses each (messy) folder name into
 structured metadata, classifies the CFX files inside each ``PINNS/`` subfolder,
 and emits a JSON registry. Robust to the dataset's naming inconsistencies
 (``Disaesed``, ``C5,`` prefixes, ``Sysstolic``/``Syastolic`` typos) because all
@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from ..config import PROJECT_ROOT, RAW_DIR, REGISTRY_PATH, load_cases, load_constants
+from ..config import LEGACY_RAW_DIR, PROJECT_ROOT, REGISTRY_PATH, load_cases, load_constants
 from .cfdpost import detect_data_kind, normalize_phase, parse_time_seconds
 
 _CASE_ID_RE = re.compile(r"case\s+(\d+)", re.IGNORECASE)
@@ -127,7 +127,7 @@ def _discover_files(pinns_dir: Path) -> Dict[str, Dict[str, dict]]:
     return files
 
 
-def discover_cases(root: Path = RAW_DIR) -> List[CaseRecord]:
+def discover_cases(root: Path = LEGACY_RAW_DIR) -> List[CaseRecord]:
     """Discover all ``Case *`` folders under ``root`` and build their records."""
     constants = load_constants()
     cases_yaml = load_cases()
@@ -180,7 +180,7 @@ def discover_cases(root: Path = RAW_DIR) -> List[CaseRecord]:
     return records
 
 
-def build_registry(root: Path = RAW_DIR, save: bool = True) -> List[CaseRecord]:
+def build_registry(root: Path = LEGACY_RAW_DIR, save: bool = True) -> List[CaseRecord]:
     """Discover cases and optionally write ``data/registry.json``."""
     records = discover_cases(root)
     if save:
