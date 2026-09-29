@@ -1,16 +1,13 @@
 """Central path and configuration management for IdealAorta-PINN.
 
 Everything that needs a filesystem path goes through here so that no other
-module hardcodes folder names. Raw CFD exports live under
-``data/raw/`` (``legacy_2025/`` for the original per-case folders, discovered by the
-case registry; ``full_2026-09/`` for the whole-domain exports, converted to the
-parquet cache under ``data/processed/full/``).
+module hardcodes folder names. The whole-domain CFD exports live under
+``data/raw/full_2026-09/`` and are converted to the parquet cache under
+``data/processed/full/`` by ``scripts/prepare.py full``.
 """
 
 from __future__ import annotations
 
-import math
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict
@@ -23,42 +20,21 @@ PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
 CONFIG_DIR: Path = PROJECT_ROOT / "configs"
 DATA_DIR: Path = PROJECT_ROOT / "data"
 RAW_DIR: Path = DATA_DIR / "raw"
-# Two export vintages, both from the rigid-wall CFD runs:
-#   full_2026-09  whole-domain exports (fluid volume, whole wall, inlet, outlet) at five
-#                 instants per case; the canonical source for new work
-#   legacy_2025   the original per-case folders behind the original study. Not kept locally
-#                 (archived on brosnan): their content lives in data/processed/ (parquet cache,
-#                 incl. the x-WSS polylines), data/results_on_slices.csv and
-#                 report/figures/cfdpost/. Restore it here only to rebuild the registry/cache.
+# Whole-domain exports of the rigid-wall CFD runs (fluid volume, whole wall, inlet,
+# outlet) at five instants per case.
 FULL_RAW_DIR: Path = RAW_DIR / "full_2026-09"
-LEGACY_RAW_DIR: Path = RAW_DIR / "legacy_2025"
 PROCESSED_DIR: Path = DATA_DIR / "processed"
 FULL_DIR: Path = PROCESSED_DIR / "full"            # parquet cache of the full_2026-09 exports
-REGISTRY_PATH: Path = DATA_DIR / "registry.json"
 
-# Trained models live in a top-level models/ folder (one subfolder per experiment).
+# Trained neural fields live in a top-level models/ folder (one subfolder per run).
 MODELS_DIR: Path = PROJECT_ROOT / "models"
 
-# Deliverables live in a top-level report/ folder, namespaced by output kind and experiment.
+# Deliverables live in a top-level report/ folder, namespaced by output kind.
 REPORT_DIR: Path = PROJECT_ROOT / "report"
-FIGURES_DIR: Path = REPORT_DIR / "figures"          # paper-ready PNG figures
-METRICS_DIR: Path = REPORT_DIR / "metrics"          # CSV/JSON + human-readable .txt
-TABLES_DIR: Path = REPORT_DIR / "tables"            # reference tables and paper CSVs
-INTERACTIVE_DIR: Path = REPORT_DIR / "interactive"  # rotatable 3D Plotly HTML
-LOGS_DIR: Path = REPORT_DIR / "logs"                # run logs, one subfolder per experiment
+METRICS_DIR: Path = REPORT_DIR / "metrics"
 # Sparse-reconstruction study (idealaorta_pinn.reconstruction): per-run JSONs, oracles,
 # baselines, observation masks and study summaries, one subfolder per kind.
 RECON_METRICS_DIR: Path = METRICS_DIR / "reconstruction"
-
-# Manuscript: LaTeX fragments, bibliography, and a copy of the figures used.
-PAPER_DIR: Path = PROJECT_ROOT / "paper"
-PAPER_FIGURES_DIR: Path = PAPER_DIR / "figures"
-
-def ensure_output_dirs() -> None:
-    """Create the standard model/report/paper directories if they do not exist."""
-    for d in (MODELS_DIR, REPORT_DIR, FIGURES_DIR, METRICS_DIR, TABLES_DIR, INTERACTIVE_DIR, LOGS_DIR,
-              PAPER_DIR, PAPER_FIGURES_DIR):
-        d.mkdir(parents=True, exist_ok=True)
 
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
@@ -71,86 +47,3 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
 def load_constants() -> Dict[str, Any]:
     """Load and cache ``configs/constants.yaml``."""
     return load_yaml(CONFIG_DIR / "constants.yaml")
-
-
-@lru_cache(maxsize=1)
-def load_cases() -> Dict[str, Any]:
-    """Load and cache ``configs/cases.yaml`` (canonical case metadata)."""
-    return load_yaml(CONFIG_DIR / "cases.yaml")
-
-
-@dataclass(frozen=True)
-class FluidProperties:
-    """Resolved fluid properties (SI units)."""
-
-    rho: float
-    mu: float
-
-    @property
-    def nu(self) -> float:
-        """Kinematic viscosity (m^2/s)."""
-        return self.mu / self.rho
-
-
-def fluid_properties() -> FluidProperties:
-    """Return the configured blood fluid properties."""
-    fluid = load_constants()["fluid"]
-    return FluidProperties(rho=float(fluid["rho"]), mu=float(fluid["mu"]))
-
-
-# ---------------------------------------------------------------------------
-# Pulsatile inlet waveform and boundary-condition helpers
-# ---------------------------------------------------------------------------
-@dataclass(frozen=True)
-class Waveform:
-    """Pulsatile inlet flow-rate waveform Q(t) from the manuscript.
-
-    One systolic pulse per cardiac period ``T``, with baseline flow through diastole::
-
-        Q(t) = Q_max * sin(pi (t - nT) / w) + Q_base,   nT <= t <= nT + w
-             = Q_base,                                  nT + w <  t <= (n+1) T
-
-    where ``n = floor(t / T)``, ``Q_base = Q_base_fraction * Q_max`` and
-    ``w = systolic_pulse_width``.
-    """
-
-    Q_max: float
-    Q_base_fraction: float
-    T: float
-    pulse_width: float
-
-    @property
-    def Q_base(self) -> float:
-        return self.Q_base_fraction * self.Q_max
-
-    def flow_rate(self, t: float) -> float:
-        """Instantaneous flow rate Q(t) (m^3/s) for absolute time ``t`` (s)."""
-        n = math.floor(t / self.T)
-        t_local = t - n * self.T
-        if 0.0 <= t_local <= self.pulse_width:
-            return self.Q_max * math.sin(math.pi * t_local / self.pulse_width) + self.Q_base
-        return self.Q_base
-
-
-def waveform() -> Waveform:
-    w = load_constants()["waveform"]
-    return Waveform(Q_max=float(w["Q_max"]), Q_base_fraction=float(w["Q_base_fraction"]),
-                    T=float(w["T"]), pulse_width=float(w["systolic_pulse_width"]))
-
-
-def mean_inlet_velocity(diameter_cm: float, t: float) -> float:
-    """Cross-section mean inlet velocity (m/s) for an inlet diameter at time ``t``.
-
-    U = Q(t) / A with A = pi (D/2)^2; sets the inlet velocity BC per (diameter, phase).
-    """
-    d_m = diameter_cm / 100.0
-    area = math.pi * (d_m / 2.0) ** 2
-    return waveform().flow_rate(t) / area
-
-
-def outlet_pressure_pa(p_mmHg: float | None = None) -> float:
-    """Outlet static pressure in Pa (defaults to the configured mid-cycle value)."""
-    c = load_constants()
-    if p_mmHg is None:
-        p_mmHg = c["pressure"]["P_outlet_default_mmHg"]
-    return float(p_mmHg) * float(c["pressure"]["mmHg_to_Pa"])

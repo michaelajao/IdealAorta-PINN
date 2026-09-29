@@ -167,7 +167,7 @@ def main() -> None:
             filename,
             "Case-wise "
             + name
-            + " relative L2 at 2.5~mm: mean (sample standard deviation) over three paired observation/initialization draws. The last column is the range of draw-wise continuity/RBF error ratios; values above one favor RBF. The spread describes these draws, not patient-population uncertainty.",
+            + " relative L2 at 2.5~mm, given as the mean (sample standard deviation) over three paired observation/initialization draws. The last column is the range of draw-wise continuity/RBF error ratios, and values above one favor RBF. The spread describes these draws, not patient-population uncertainty.",
             "tab:case_" + ("pressure" if path == P else "shear"),
             "llcccc",
             "Case & Phase & Continuity & Data-only & RBF & Ratio range",
@@ -233,7 +233,7 @@ def main() -> None:
             )
     table(
         "pilot_endpoints.tex",
-        "Pilot endpoints: continuity-field pressure/shear from the common pipeline versus direct momentum-PINN pressure and autograd shear. Values are relative L2, averaged over two draws at systole and one at diastole. The direct and pipeline routes are explicitly different; this table tests the proposed end-to-end PINN against the staged reconstruction candidate.",
+        "Pilot endpoints, comparing the pressure and WSS of the continuity field passed through the shared post-processing with the momentum PINNs' own pressure output and automatic-differentiation WSS. Values are relative L2 errors averaged over two draws at systole and one at diastole. The two routes differ by design, so the table compares the end-to-end PINN with the staged reconstruction.",
         "tab:pilot",
         "llccccc",
         r"Case & Phase & \shortstack{Cont. pressure\\(post-proc.)} & \shortstack{Steady head\\(direct)} & "

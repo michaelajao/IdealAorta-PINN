@@ -17,7 +17,7 @@ training        fit one neural-field arm and score it on the hidden targets
 study           experiment matrices from configs/reconstruction/*.yaml, selection and analyses
 
 The command-line front end is ``scripts/reconstruct.py``. Run names keep the ``rev2_``
-experiment prefix of the revision study (like ``stageA_`` / ``stageB_`` of the original).
+experiment prefix of the revision study.
 """
 
 from ..config import load_constants

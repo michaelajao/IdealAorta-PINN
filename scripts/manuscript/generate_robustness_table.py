@@ -179,7 +179,7 @@ def main(completed_groups: bool = False) -> None:
 \begin{table}[htbp]
 \centering
 \small
-\caption{Robustness to the interpolation comparator: median relative errors over the UNIT_COUNT case--phase units of Cases~2--8 with draw 0 at 2.5~mm. The tuned RBF chooses kernel, neighbourhood and smoothing on the withheld observations; the space-time RBF interpolates both snapshots jointly with a time scale chosen the same way. All methods share the post-processing; pressure uses the unsteady form with oracle $\mu_t$.}
+\caption{Robustness to the interpolation comparator, given as median relative errors over the UNIT_COUNT case--phase units of Cases~2--8 with draw 0 at 2.5~mm. The tuned RBF chooses kernel, neighbourhood and smoothing on the withheld observations; the space-time RBF interpolates both snapshots jointly with a time scale chosen the same way. All methods share the post-processing; pressure uses the unsteady form with oracle $\mu_t$.}
 \label{tab:robustness}
 \begin{tabular}{llccc}
 \toprule

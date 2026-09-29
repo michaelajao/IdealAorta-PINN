@@ -41,7 +41,7 @@ def main() -> None:
 \centering
 \small
 \setlength{\tabcolsep}{4pt}
-\caption{Pipeline floor: complete CFD velocity passed through the shared post-processing. Pressure columns give the sub-cloud relative L2 error for each information setting (time term on or off; CFD eddy viscosity or molecular viscosity only). $\Delta p_{\rm sub}$ is the CFD pressure drop between the inlet and outlet ends of the sub-cloud. Wall-shear columns give the aneurysm-zone magnitude error of the one-sided estimate at $h=0.1$~mm and at the registered $h=0.25$~mm. Case 2's systolic window runs forward from the target (1.780--1.788~s), which explains its larger unsteady error.}
+\caption{Pipeline floor, obtained by passing the complete CFD velocity through the shared post-processing. Pressure columns give the sub-cloud relative L2 error for each information setting (time term on or off; CFD eddy viscosity or molecular viscosity only). $\Delta p_{\rm sub}$ is the CFD pressure drop between the inlet and outlet ends of the sub-cloud. Wall-shear columns give the aneurysm-zone magnitude error of the one-sided estimate at $h=0.1$~mm and at the registered $h=0.25$~mm. Case 2's systolic window runs forward from the target (1.780--1.788~s), which explains its larger unsteady error.}
 \label{tab:reference_floor}
 \begin{tabular}{llccccrcc}
 \toprule

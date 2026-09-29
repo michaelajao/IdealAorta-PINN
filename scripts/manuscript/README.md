@@ -15,7 +15,6 @@ The manuscript and study data are intentionally excluded from Git.
 | `python scripts/manuscript/generate_cfd_views.py [sl wss]` | Streamlines and wall-shear surface views; defaults to both |
 | `python scripts/manuscript/generate_evidence.py` | Reconstruction tables, figures and evidence audit |
 | `python scripts/manuscript/generate_field_maps.py [case target_ms]` | Pressure/WSS maps; defaults to Case 4 at 1780 ms |
-| `python scripts/manuscript/generate_pilot_pipeline.py` | Pilot PINNs through the shared post-processing (needs `reconstruct.py diagnose` on the pilot runs) |
 | `python scripts/manuscript/generate_plane_profiles.py` | Plane-wise speed and turbulent kinetic energy |
 | `python scripts/manuscript/generate_reference_table.py` | Complete-CFD post-processing reference table |
 | `python scripts/manuscript/generate_robustness_table.py` | Robustness table and audit; requires all 14 case-phase units |
