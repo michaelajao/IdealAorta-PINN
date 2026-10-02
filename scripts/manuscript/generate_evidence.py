@@ -31,7 +31,8 @@ def main() -> None:
     (ROOT / "report/tables").mkdir(parents=True, exist_ok=True)
     OUT.mkdir(exist_ok=True)
     TABLES.mkdir(exist_ok=True)
-    records = [json.loads(p.read_text()) for p in sorted(RUNS.glob("*.json"))]
+    # near-wall sensitivity runs (_mw) are a separate analysis, not extra draws
+    records = [json.loads(p.read_text()) for p in sorted(RUNS.glob("*.json")) if "_mw" not in p.stem]
 
     def label(r):
         return r.get("spec", {}).get("arm", r["method"])

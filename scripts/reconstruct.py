@@ -17,6 +17,8 @@ jobs         Expand a study into command lines for scripts/queue_jobs.sh.
 select       Physics weight per arm from held-out observation error (pilot_select).
 summarize    Every method per case / window / grid for a study.
 confirm      Pre-registered hypothesis tests of a confirmatory study.
+rescore      Rebuild the fields of saved run records and rescore them with the current
+             constants (after a change of blood density); velocity/WSS are checked.
 
 Usage:
     python scripts/reconstruct.py audit --case 1 --t 1780
@@ -114,6 +116,16 @@ def cmd_diagnose(args) -> None:
         print(json.dumps(out, indent=1, default=float))
 
 
+def cmd_rescore(args) -> None:
+    from idealaorta_pinn.reconstruction.rescore import rescore
+    for name in args.names:
+        r = rescore(name, device=args.device)
+        ok = all(c["match"] for c in r["rescored"]["checks"].values())
+        print(f"[rescore] {name}: checks {'ok' if ok else 'MISMATCH'}; "
+              f"pressure {r['pressure']['unsteady+mut']['p_rel_l2']:.4f} "
+              f"(was {r['rescored']['previous']['pressure']['unsteady+mut']['p_rel_l2']:.4f})", flush=True)
+
+
 def cmd_jobs(args) -> None:
     from idealaorta_pinn.reconstruction.study import jobs, load_study
     print("\n".join(jobs(load_study(args.study), args.kind)))
@@ -196,6 +208,11 @@ def main() -> None:
     p.add_argument("names", nargs="+", help="run names under models/")
     p.add_argument("--device", default="cuda")
     p.set_defaults(func=cmd_diagnose)
+
+    p = sub.add_parser("rescore", help="rescore saved run records with the current constants")
+    p.add_argument("names", nargs="+", help="run names under report/metrics/reconstruction/runs/")
+    p.add_argument("--device", default="cuda")
+    p.set_defaults(func=cmd_rescore)
 
     p = sub.add_parser("jobs", help="expand a study into job lines")
     p.add_argument("study", help="name under configs/reconstruction/ or a YAML path")

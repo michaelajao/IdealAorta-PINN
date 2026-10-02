@@ -3,7 +3,7 @@
 # under Aneurysmal and Non-Aneurysmal Conditions" and the group's prior CFD setup.
 
 fluid:
-  rho: 1060.0          # blood density (kg/m^3)
+  rho: 1050.0          # blood density (kg/m^3), as set in Fluent (confirmed 2026-09-30)
   mu: 0.0035           # dynamic viscosity (Pa.s), Newtonian assumption
   # Optional Carreau-Yasuda non-Newtonian rheology (disabled by default for the
   # idealized study, which used a Newtonian model). Mirrors the TAA project.

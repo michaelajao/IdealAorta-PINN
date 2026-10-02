@@ -86,8 +86,13 @@ def snapshot_neighbours(case: int, t_ms: int, window_ms: int = NEIGHBOUR_WINDOW_
 
 
 # --------------------------------------------------------------------------- records
-def load_runs(pattern: str = "*.json") -> List[Dict]:
-    return [json.load(open(f)) for f in sorted(glob.glob(str(RUNS_DIR / pattern)))]
+def load_runs(pattern: str = "*.json", include_sensitivity: bool = False) -> List[Dict]:
+    """Run records matching ``pattern``. Sensitivity runs that drop near-wall observations
+    (``_mw`` in the name) are a separate analysis and are excluded unless asked for."""
+    files = sorted(glob.glob(str(RUNS_DIR / pattern)))
+    if not include_sensitivity:
+        files = [f for f in files if "_mw" not in Path(f).stem]
+    return [json.load(open(f)) for f in files]
 
 
 def _get(record: Dict, path: str) -> float:

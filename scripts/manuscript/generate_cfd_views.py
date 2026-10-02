@@ -128,7 +128,7 @@ def streamlines_by_diameter(vmax=1.6):
             extend="max",
         )
         cb.set_label(
-            f"speed (m s$^{{-1}}$) at 1.780 s, inlet diameter {dlab} cm", fontsize=8
+            f"speed (m s$^{{-1}}$), systolic phase, inlet diameter {dlab} cm", fontsize=8
         )
         cb.ax.tick_params(labelsize=7.5)
         tag = dlab.replace(".", "p")

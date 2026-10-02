@@ -21,7 +21,7 @@ MANUSCRIPT = ROOT / "paper/revision_2026_09/manuscript"
 sys.path.insert(0, str(ROOT))
 from idealaorta_pinn.data.full_export import load_block
 
-RHO, MU, Q0, T = 1060.0, 0.0035, 2.39e-4, 0.8
+RHO, MU, Q0, T = 1050.0, 0.0035, 2.39e-4, 0.8
 DIAM = {
     c: d
     for d, cs in ((2.0, (1, 2, 3, 10)), (2.3, (4, 5, 6, 11)), (2.6, (7, 8, 9, 12)))
@@ -182,7 +182,7 @@ Case & $D_{\rm in}$ (cm) & $\beta$ & Sys. & Dia. & Median & 95th pct. & Median &
 \begin{table}[htbp]
 \centering
 \small
-\caption{Inflow scales implied by the prescribed waveform ($\rho=1060$~kg~m$^{-3}$, $\mu=3.5\times10^{-3}$~Pa~s, $T=0.8$~s). Velocities are cross-sectional means at the inlet; $\mathrm{Re}=\rho \bar U D_{\rm in}/\mu$ and $\mathrm{Wo}=(D_{\rm in}/2)\sqrt{2\pi\rho/(\mu T)}$.}
+\caption{Inflow scales implied by the prescribed waveform ($\rho=1050$~kg~m$^{-3}$, $\mu=3.5\times10^{-3}$~Pa~s, $T=0.8$~s). Velocities are cross-sectional means at the inlet; $\mathrm{Re}=\rho \bar U D_{\rm in}/\mu$ and $\mathrm{Wo}=(D_{\rm in}/2)\sqrt{2\pi\rho/(\mu T)}$.}
 \label{tab:flow_groups}
 \begin{tabular}{ccccc}
 \toprule
