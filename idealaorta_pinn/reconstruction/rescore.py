@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import json
+import re
 from typing import Dict
 
 import numpy as np
@@ -20,6 +21,14 @@ from .interpolation import (_sources, _spacetime_sources, linear_fields, rbf_eva
 from .postprocess import PressureIntegrator, pressure_scores, score_field
 from .problem import build_problem
 from .training import RUNS_DIR, load_field, predict, save_run
+
+def _min_wall(name: str, spec: Dict) -> float:
+    """Near-wall exclusion of a run: from its spec, else from the ``_mw<mm>`` name suffix (comparators)."""
+    if spec.get("min_wall_mm"):
+        return float(spec["min_wall_mm"])
+    m = re.search(r"_mw([0-9.]+)$", name)
+    return float(m.group(1)) if m else 0.0
+
 
 CHECK_KEYS = (("velocity", "vel_rel_l2"), ("wss", "wss_mag_rel_l2"))
 
@@ -55,7 +64,7 @@ def rescore(name: str, device: str = "cuda", tol: float = 1e-6) -> Dict:
     spec = record.get("spec") or {}
     times = spec.get("times") or pr["times_ms"]
     P = build_problem(pr["case"], list(times), pr["target_ms"], float(pr["grid_mm"]), int(pr["seed"]),
-                      save_mask=False, min_wall_mm=float(spec.get("min_wall_mm", 0.0) or record.get("min_wall_mm", 0.0)))
+                      save_mask=False, min_wall_mm=_min_wall(name, spec))
     if int(len(P.obs_ids)) != int(pr["n_obs_per_time"]):
         raise RuntimeError(f"{name}: rebuilt {len(P.obs_ids)} observations, record has {pr['n_obs_per_time']}")
     fields, p_head = _fields(record, P, device)
