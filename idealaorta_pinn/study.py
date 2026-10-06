@@ -4,11 +4,12 @@ A study config names the cases, the time windows, the observation draws
 (``[grid_mm, seed]``), the neural-field arms and the interpolation comparators.
 ``jobs`` expands it into ``scripts/reconstruct.py`` command lines for
 ``scripts/queue_jobs.sh``; the analyses read the run records in
-``report/metrics/reconstruction/runs`` and write study summaries next to them.
+``report/runs`` and write study summaries to ``report/tables``.
 """
 
 from __future__ import annotations
 
+import csv
 import glob
 import json
 from collections import defaultdict
@@ -17,11 +18,10 @@ from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
-from ..config import CONFIG_DIR, FULL_DIR, RECON_METRICS_DIR, load_yaml
+from .config import CONFIG_DIR, FULL_DIR, RUNS_DIR, TABLES_DIR, load_yaml
 from .postprocess import PRESSURE_FORMS
-from .training import RUNS_DIR
 
-SUMMARY_DIR = RECON_METRICS_DIR / "summaries"
+SUMMARY_DIR = TABLES_DIR
 NEIGHBOUR_WINDOW_MS = 50
 
 
@@ -42,7 +42,7 @@ def _windows(study: Dict, case: int) -> Iterator[Tuple[str, List[int], int, List
 def jobs(study: Dict, kind: str) -> List[str]:
     """Command lines (arguments of scripts/reconstruct.py) for one study.
 
-    ``kind``: ``train`` (neural-field arms), ``baseline`` (registered comparators and the
+    ``kind``: ``train`` (neural-field arms), ``baseline`` (prespecified comparators and the
     CFD floor), ``robustness`` (the additional tuned / space-time RBF comparators) or
     ``reference`` (training-free audits of a reference study).
     """
@@ -126,7 +126,7 @@ def _write_summary(name: str, payload: Dict) -> Path:
 # --------------------------------------------------------------------------- analyses
 def select_weights(study: Dict) -> Dict:
     """Physics weight per arm with the lowest held-out observation error."""
-    runs = [r for r in load_runs("rev2_*.json") if r["method"] == "nf" and r["spec"]["steps"] == study["steps"]
+    runs = [r for r in load_runs() if r["method"] == "nf" and r["spec"]["steps"] == study["steps"]
             and _key(r)[0] in study["cases"]]
     table, best = [], {}
     for r in sorted(runs, key=lambda r: (r["spec"]["arm"], r["spec"]["closure"], r["spec"]["wphys"])):
@@ -162,7 +162,7 @@ def summarize(study: Dict) -> Dict:
 
 
 def confirm(study: Dict) -> Dict:
-    """Pre-registered hypothesis tests of a confirmatory study (see its ``hypotheses``)."""
+    """Prespecified hypothesis tests of a confirmatory study (see its ``hypotheses``)."""
     H = study["hypotheses"]
     grid = float(H["primary_grid"])
     by = defaultdict(lambda: defaultdict(list))            # (case, target, grid, label) -> metric -> values
@@ -219,4 +219,43 @@ def confirm(study: Dict) -> Dict:
                                      for c, t in units),
            "units": per_unit, "pressure_forms": forms, "ladder": ladder}
     _write_summary(study["name"], out)
+    return out
+
+
+# --------------------------------------------------------------------------- report
+def _write_csv(path: Path, header, rows) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(rows)
+    return path
+
+
+def report(study: Dict) -> Dict[str, Path]:
+    """CSV tables (``report/tables``) and figures (``report/figures``) of one confirmatory study."""
+    from .plots import plot_study
+
+    result = confirm(study)
+    name = study["name"]
+    labels = [k for k in result["units"][0] if k not in ("case", "target_ms")]
+    unit_rows = [[u["case"], u["target_ms"], label, u[label]["n"], u[label]["vel"], u[label]["wss"], u[label]["p"]]
+                 for u in result["units"] for label in labels if u[label]["n"]]
+    median_rows = []
+    for key, v in sorted(result["ladder"].items()):
+        t, rest = key.split("_", 1)
+        label, grid = rest.rsplit("_g", 1)
+        median_rows.append([int(t[1:]), float(grid), label, v["vel"], v["wss"], v["p"]])
+    test_rows = [[h, r["wins"], r["of"], r["median_ratio"], r["min_wins"], r["max_median_ratio"], r["pass"]]
+                 for h, r in result.items() if h.startswith("H")]
+    out = {
+        "units": _write_csv(TABLES_DIR / f"{name}_units.csv",
+                            ["case", "target_ms", "method", "n_draws", "velocity", "wss", "pressure"], unit_rows),
+        "medians": _write_csv(TABLES_DIR / f"{name}_medians.csv",
+                              ["target_ms", "grid_mm", "method", "velocity", "wss", "pressure"], median_rows),
+        "tests": _write_csv(TABLES_DIR / f"{name}_tests.csv",
+                            ["hypothesis", "wins", "units", "median_ratio", "min_wins", "max_median_ratio", "pass"],
+                            test_rows),
+    }
+    out.update(plot_study(study, result))
     return out

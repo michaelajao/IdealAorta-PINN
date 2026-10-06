@@ -1,5 +1,5 @@
 # Confirmatory study (frozen 2026-09-26 before any run on these cases).
-# Candidate NF-PI: continuity-constrained space-time field (cont, w 0.01) + momentum
+# Candidate: continuity-constrained space-time field (cont, w 0.01) + momentum
 # integration in post-processing. Cases 2-8 were never used in reconstruction development.
 name: confirm
 cases: [2, 3, 4, 5, 6, 7, 8]
@@ -15,7 +15,7 @@ baselines: [linear, rbf]
 floor_draw: [2.5, 0]
 robustness_baselines: [rbf_tuned, rbf_spacetime]    # added 2026-09-27 after the verdict
 
-# Pre-registered hypotheses: units = cases x windows at the primary grid, averaged over draws.
+# Prespecified hypotheses: units = cases x windows at the primary grid, averaged over draws.
 hypotheses:
   primary_grid: 2.5
   candidate: cont

@@ -30,18 +30,16 @@ from typing import Dict, List, Optional
 import numpy as np
 import torch
 
-from ..config import MODELS_DIR, RECON_METRICS_DIR
-from . import MU, RHO
+from .config import CHECKS_DIR, MODELS_DIR, MU, RHO, RUNS_DIR
 from .fields import FieldNet, residuals_func, wall_shear_s
 from .postprocess import PressureIntegrator, pressure_scores, score_field, wss_scores
 from .problem import build_problem, validation_split
 
-RUNS_DIR = RECON_METRICS_DIR / "runs"
 ARMS = ("data", "cont", "steady", "unsteady")
 CLOSURES = ("oracle", "lam")
 DEFAULT_STEPS = 20000
 BATCH = {"obs": 4096, "col": 4096, "wall": 2048, "in": 512, "out": 256}
-_SOURCES = [Path(__file__).parent / f for f in ("fields.py", "problem.py", "postprocess.py", "training.py", "numerics.py")]
+_SOURCES = [Path(__file__).parent / f for f in ("fields.py", "problem.py", "postprocess.py", "training.py")]
 
 
 @dataclass
@@ -64,7 +62,7 @@ class ArmSpec:
         """Run name; a step count other than the default is part of the name, so a short
         selection run and a full run of the same arm never share a record."""
         steps = "" if self.steps == DEFAULT_STEPS else f"_n{self.steps}"
-        return (f"rev2_{self.arm}_{self.closure}_c{self.case:02d}_t{self.target}_g{self.grid:g}"
+        return (f"{self.arm}_{self.closure}_c{self.case:02d}_t{self.target}_g{self.grid:g}"
                 f"_s{self.seed}_i{self.init_seed}_w{self.wphys:g}{steps}"
                 + (f"_mw{self.min_wall_mm:g}" if self.min_wall_mm > 0 else ""))
 
@@ -246,7 +244,6 @@ def save_run(record: Dict, name: Optional[str] = None) -> Path:
     return path
 
 
-DIAG_DIR = RECON_METRICS_DIR / "diag"
 DIAG_BINS_M = (0, 0.25e-3, 0.5e-3, 1e-3, 2e-3, 5e-3, 1.0)
 
 
@@ -257,7 +254,7 @@ def diagnose(name: str, device: str = "cuda") -> Dict:
     residuals binned by wall distance with the fraction of collocation nodes per bin
     (nodes are sampled uniformly, so the refined prism layers are over-represented),
     and the pressure integrated from the field's velocity in every pressure form.
-    Diagnostic only: nothing here feeds back into a registered run.
+    Diagnostic only: nothing here feeds back into a scored run.
     """
     net, scales, spec = load_field(name, device)
     P = build_problem(spec["case"], spec["times"], spec["target"], spec["grid"], spec["seed"], save_mask=False,
@@ -286,6 +283,6 @@ def diagnose(name: str, device: str = "cuda") -> Dict:
     scored = score_field(P, integ, fields)
     out["pipeline"] = scored["pressure"]
     out["pipeline_wss"] = scored.get("wss")
-    DIAG_DIR.mkdir(parents=True, exist_ok=True)
-    (DIAG_DIR / f"{name}.json").write_text(json.dumps(out, indent=1, default=float))
+    CHECKS_DIR.mkdir(parents=True, exist_ok=True)
+    (CHECKS_DIR / f"diag_{name}.json").write_text(json.dumps(out, indent=1, default=float))
     return out

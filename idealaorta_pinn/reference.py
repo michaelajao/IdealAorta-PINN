@@ -29,9 +29,9 @@ from scipy.interpolate import LinearNDInterpolator
 from scipy.sparse.linalg import lsqr
 from scipy.spatial import cKDTree
 
-from ..data.full_export import SPLIT_TRAIN, load_block, load_full_snapshot, wall_normals_from_volume
-from . import MU, RHO
-from .numerics import DEFAULT_K, grad, lsq_operator, sparse_grad_matrix, stencil_condition
+from .data import SPLIT_TRAIN, load_block, load_full_snapshot, wall_normals_from_volume
+from .config import MU, RHO
+from .postprocess import DEFAULT_K, grad, lsq_operator, sparse_grad_matrix, stencil_condition
 
 NU = MU / RHO
 KAPPA, B_LOG = 0.41, 5.2                         # log-law constants for Spalding's law

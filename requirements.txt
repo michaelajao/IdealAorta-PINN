@@ -1,6 +1,6 @@
 # Python >= 3.10. Install torch first from the CUDA-matching index, e.g.
 #   pip install torch --index-url https://download.pytorch.org/whl/cu124
-# Versions are the lower bounds the study was run with (brosnan: torch 2.6, numpy 1.24).
+# Versions are the lower bounds the study was run with (torch 2.6, numpy 1.24).
 torch>=2.4
 numpy>=1.24
 scipy>=1.11

@@ -8,7 +8,7 @@ nodes carry u = 0) is turned into
                unreliable in the prism layers); gauge = mean over sub-cloud nodes with
                x > 0.130 m
     wall shear mu (4 u_t(h) - u_t(2h)) / (2h) along the inward normal (Newtonian, second
-               order) at a pre-registered distance h, from a linear interpolant
+               order) at a prespecified distance h, from a linear interpolant
 
 The momentum form is the one the CFD fields satisfy (``reference.momentum_budget``):
 rho du/dt + rho (u.grad)u + grad p - div[(mu + mu_t)(grad u + grad u^T)] = 0, with no
@@ -23,9 +23,9 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.interpolate import LinearNDInterpolator
 from scipy.sparse.linalg import lsqr
+from scipy.spatial import cKDTree
 
-from . import MU, RHO
-from .numerics import DEFAULT_K, grad, lsq_operator, sparse_grad_matrix
+from .config import MU, RHO
 
 OUTLET_GAUGE_X = 0.130      # m: sub-cloud nodes beyond this define the pressure gauge
 INLET_REGION_X = 0.005      # m: sub-cloud nodes before this define the inlet pressure
@@ -34,6 +34,60 @@ INLET_REGION_X = 0.005      # m: sub-cloud nodes before this define the inlet pr
 PRESSURE_FORMS = ("unsteady+mut", "steady+mut", "unsteady+lam", "steady+lam")
 
 
+# --------------------------------------------------------------------------- gradients
+# Least-squares node gradients on the unstructured CFD point cloud. Every derivative of a
+# nodal field (the CFD fields, or a reconstruction sampled at the CFD nodes) uses these,
+# so references, baselines and neural fields are differentiated identically. The stencil
+# is the k nearest neighbours with inverse-square-distance weights; with k = 40 the median
+# divergence of the CFD velocity is about 1 % of |grad u| in the bulk.
+DEFAULT_K = 40
+
+
+
+def lsq_operator(X: np.ndarray, k: int = DEFAULT_K):
+    """Per-node gradient weights: ``grad f_i = sum_j C[i, :, j] (f[nb[i, j]] - f_i)``.
+
+    Returns:
+        ``(nb, C)`` with neighbour indices ``(N, k)`` and weights ``(N, 3, k)``.
+    """
+    _, nb = cKDTree(X).query(X, k=k + 1)
+    nb = nb[:, 1:]
+    A = X[nb] - X[:, None, :]                                    # (N, k, 3)
+    w = 1.0 / np.maximum(np.einsum("nkd,nkd->nk", A, A), 1e-18)
+    AtW = np.transpose(A * w[..., None], (0, 2, 1))              # (N, 3, k)
+    return nb, np.linalg.solve(AtW @ A, AtW)
+
+
+def stencil_condition(X: np.ndarray, nb: np.ndarray) -> np.ndarray:
+    """Condition number of each node's weighted normal matrix (stencil quality check)."""
+    A = X[nb] - X[:, None, :]
+    w = 1.0 / np.maximum(np.einsum("nkd,nkd->nk", A, A), 1e-18)
+    return np.linalg.cond(np.transpose(A * w[..., None], (0, 2, 1)) @ A)
+
+
+def grad(nb: np.ndarray, C: np.ndarray, f: np.ndarray) -> np.ndarray:
+    """Gradient of nodal field(s): ``(N,) -> (N, 3)`` or ``(N, m) -> (N, m, 3)``."""
+    if f.ndim == 1:
+        return np.einsum("ndk,nk->nd", C, f[nb] - f[:, None])
+    return np.einsum("ndk,nkm->nmd", C, f[nb] - f[:, None, :])
+
+
+def lsq_gradient(X: np.ndarray, f: np.ndarray, k: int = DEFAULT_K) -> np.ndarray:
+    """Gradient of one scalar nodal field (builds the operator; use grad() to reuse it)."""
+    nb, C = lsq_operator(X, k)
+    return grad(nb, C, f)
+
+
+def sparse_grad_matrix(nb: np.ndarray, C: np.ndarray) -> sp.csr_matrix:
+    """``G`` of shape ``(3N, N)`` with ``(G f)[3 i + d] = d f / d x_d`` at node ``i``."""
+    N, k = nb.shape
+    rows = np.repeat(np.arange(3 * N), k + 1)
+    cols = np.repeat(np.concatenate([nb, np.arange(N)[:, None]], 1)[:, None, :], 3, 1).reshape(-1)
+    vals = np.concatenate([C, -C.sum(2, keepdims=True)], 2).reshape(-1)
+    return sp.csr_matrix((vals, (rows, cols)), shape=(3 * N, N))
+
+
+# --------------------------------------------------------------------------- pressure and wall shear
 class PressureIntegrator:
     """Stencils for one geometry (interior + wall nodes) and the sub-cloud integration."""
 
@@ -149,7 +203,7 @@ def score_field(P, integ: PressureIntegrator, fields: Dict[int, np.ndarray],
     """Score one method's nodal velocity at both window times on every hidden target.
 
     ``fields`` maps window time (ms) to interior velocity (N_int, 3). The pressure step is
-    evaluated in all four :data:`PRESSURE_FORMS`; wall shear at the pre-registered
+    evaluated in all four :data:`PRESSURE_FORMS`; wall shear at the prespecified
     ``h_pre_mm`` (primary) and over ``h_sweep`` (an oracle choice, labelled as such).
     """
     tgt = P.snaps[P.target_ms]

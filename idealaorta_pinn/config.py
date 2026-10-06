@@ -1,9 +1,23 @@
-"""Central path and configuration management for IdealAorta-PINN.
+"""Paths and physical constants.
 
-Everything that needs a filesystem path goes through here so that no other
-module hardcodes folder names. The whole-domain CFD exports live under
-``data/raw/full_2026-09/`` and are converted to the parquet cache under
-``data/processed/full/`` by ``scripts/prepare.py full``.
+Every filesystem path of the project is defined here, so no other module hardcodes a
+folder name.
+
+Inputs
+    data/raw/full_2026-09/Case <n>/<time>.csv   whole-domain CFD exports (on request)
+    data/processed/full/                        their per-block parquet (``main.py prepare``)
+    data/raw/TAWSS 30.09.2026/, data/raw/MPS/,  further exports for the CFD figures only
+    data/results_on_slices.csv
+
+Outputs
+    models/<run>/          trained neural fields (checkpoint and training history)
+    report/runs/           one JSON record per reconstruction: method, problem and scores
+    report/masks/          observed node indices of each observation draw
+    report/checks/         training-free checks of the CFD fields (``audit_*``, ``wss_*``)
+                           and diagnostics of trained momentum PINNs (``diag_*``)
+    report/tables/         study summaries (JSON) and the CSV tables of ``main.py report``
+    report/figures/        figures of ``main.py report``
+    report/logs/           one log per queued job and ``done.txt`` (``main.py run-jobs``)
 """
 
 from __future__ import annotations
@@ -14,27 +28,25 @@ from typing import Any, Dict
 
 import yaml
 
-# Repository root = parent of the package directory.
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[1]
-
 CONFIG_DIR: Path = PROJECT_ROOT / "configs"
+
 DATA_DIR: Path = PROJECT_ROOT / "data"
-RAW_DIR: Path = DATA_DIR / "raw"
-# Whole-domain exports of the rigid-wall CFD runs (fluid volume, whole wall, inlet,
-# outlet) at five instants per case.
-FULL_RAW_DIR: Path = RAW_DIR / "full_2026-09"
-PROCESSED_DIR: Path = DATA_DIR / "processed"
-FULL_DIR: Path = PROCESSED_DIR / "full"            # parquet cache of the full_2026-09 exports
+FULL_RAW_DIR: Path = DATA_DIR / "raw" / "full_2026-09"
+FULL_DIR: Path = DATA_DIR / "processed" / "full"
+# further CFD and structural exports, used only by the CFD figures (plots.py)
+TAWSS_DIR: Path = DATA_DIR / "raw" / "TAWSS 30.09.2026"     # time-averaged WSS at the wall nodes
+MPS_DIR: Path = DATA_DIR / "raw" / "MPS"                    # maximum principal stress, ANSYS Mechanical
+SLICES_CSV: Path = DATA_DIR / "results_on_slices.csv"       # plane-averaged speed and k on planes D1-D8
 
-# Trained neural fields live in a top-level models/ folder (one subfolder per run).
 MODELS_DIR: Path = PROJECT_ROOT / "models"
-
-# Deliverables live in a top-level report/ folder, namespaced by output kind.
 REPORT_DIR: Path = PROJECT_ROOT / "report"
-METRICS_DIR: Path = REPORT_DIR / "metrics"
-# Sparse-reconstruction study (idealaorta_pinn.reconstruction): per-run JSONs, oracles,
-# baselines, observation masks and study summaries, one subfolder per kind.
-RECON_METRICS_DIR: Path = METRICS_DIR / "reconstruction"
+RUNS_DIR: Path = REPORT_DIR / "runs"
+MASK_DIR: Path = REPORT_DIR / "masks"
+CHECKS_DIR: Path = REPORT_DIR / "checks"
+TABLES_DIR: Path = REPORT_DIR / "tables"
+FIGURES_DIR: Path = REPORT_DIR / "figures"
+LOG_DIR: Path = REPORT_DIR / "logs"
 
 
 def load_yaml(path: str | Path) -> Dict[str, Any]:
@@ -47,3 +59,7 @@ def load_yaml(path: str | Path) -> Dict[str, Any]:
 def load_constants() -> Dict[str, Any]:
     """Load and cache ``configs/constants.yaml``."""
     return load_yaml(CONFIG_DIR / "constants.yaml")
+
+
+RHO: float = float(load_constants()["fluid"]["rho"])   # blood density (kg/m^3)
+MU: float = float(load_constants()["fluid"]["mu"])     # molecular dynamic viscosity (Pa s)

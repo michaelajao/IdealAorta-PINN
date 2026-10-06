@@ -1,8 +1,8 @@
-# Pilot stage 1: physics-weight selection (frozen 2026-09-25, revision/PLAN.md section 5).
+# Development test, stage 1: physics-weight selection (frozen 2026-09-25).
 # One problem (Case 1, peak systole, 2.5 mm grid, draw 0); each physics arm at three
 # weights, 10k steps. The weight with the lowest held-out *observation* error is kept
 # for every later stage; hidden targets are never consulted.
-name: pilot_select
+name: dev_select
 cases: [1]
 windows:
   systole: {times: [1775, 1780], target: 1780}

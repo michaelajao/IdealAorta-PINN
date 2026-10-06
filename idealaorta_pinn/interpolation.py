@@ -6,7 +6,7 @@ window times, zero velocity on the wall nodes and the prescribed inlet plug. Eac
 
     linear          Delaunay linear interpolation per snapshot (nearest sample outside
                     the hull of the samples)
-    rbf             local thin-plate RBF per snapshot, 64 neighbours (the registered
+    rbf             local thin-plate RBF per snapshot, 64 neighbours (the prespecified
                     comparator; widened only where a neighbourhood is coplanar)
     rbf_tuned       per-snapshot RBF with kernel, neighbours and smoothing chosen on the
                     shared 10 % observation hold-out (``problem.validation_split``)
@@ -155,7 +155,7 @@ INTERPOLATORS = {"linear": linear_fields, "rbf": rbf_fields,
 
 def comparator_name(method: str, case: int, target: int, grid: float, seed: int, min_wall_mm: float = 0.0) -> str:
     mw = f"_mw{min_wall_mm:g}" if min_wall_mm > 0 else ""
-    return f"rev2_{method}_c{case:02d}_t{target}_g{grid:g}_s{seed}{mw}"
+    return f"{method}_c{case:02d}_t{target}_g{grid:g}_s{seed}{mw}"
 
 
 def run_comparator(method: str, case: int, times: List[int], target: int, grid: float, seed: int,

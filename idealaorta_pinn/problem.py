@@ -26,11 +26,10 @@ import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
 
-from ..config import RECON_METRICS_DIR
-from ..data.full_export import load_block, wall_normals_from_volume
-from .numerics import lsq_gradient
+from .config import MASK_DIR
+from .data import load_block, wall_normals_from_volume
+from .postprocess import lsq_gradient
 
-MASK_DIR = RECON_METRICS_DIR / "masks"
 VALIDATION_FRACTION = 0.10
 
 

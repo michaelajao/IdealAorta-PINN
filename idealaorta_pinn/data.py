@@ -1,8 +1,9 @@
-"""Full-domain CFD exports: the fluid volume, the whole wall, the inlet and the outlet.
+"""Whole-domain CFD exports: parsing, the parquet cache and the snapshot loaders.
 
-The 2026-09 exports (``data/raw/full_2026-09/Case N/<time>.csv``) hold one CSV per
-(case, time) with five CFD-Post blocks. ``convert_all`` (``scripts/prepare.py full``)
-splits them once into ``data/processed/full/caseNN_<block>_t<ms>.parquet``:
+The exports (``data/raw/full_2026-09/Case N/<time>.csv``) hold one ANSYS CFD-Post CSV
+per (case, time) with five ``[Name]`` / ``[Data]`` blocks. ``convert_all``
+(``main.py prepare``) splits them once into
+``data/processed/full/caseNN_<block>_t<ms>.parquet``:
 
     solid      every node of the fluid domain (the block keeps the geometry body's
                default name) with u, v, w, p and the eddy viscosity mu_t
@@ -10,15 +11,11 @@ splits them once into ``data/processed/full/caseNN_<block>_t<ms>.parquet``:
     aneurysm   healthy cases have no aneurysm zone
     inlet      the x = 0 face (uniform plug in -x)
     outlet     the x = 0.135 m face
-
-Unlike the older streamline and aneurysm-clip exports, these cover the whole vessel, so
-supervision, the wall conditions and the PDE residual can all act from inlet to outlet.
-Scoring uses a 3D checkerboard of ``block_mm`` cubes: one colour is withheld from
-training, and a fifth of the withheld cubes is set aside to monitor training.
 """
 
 from __future__ import annotations
 
+import io
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -28,8 +25,7 @@ import numpy as np
 import pandas as pd
 from scipy.spatial import cKDTree
 
-from ..config import FULL_DIR, FULL_RAW_DIR
-from .cfdpost import read_cfdpost_blocks
+from .config import FULL_DIR, FULL_RAW_DIR, RHO
 
 SPLIT_TRAIN, SPLIT_TEST, SPLIT_VAL = 0, 1, 2
 
@@ -39,7 +35,63 @@ SPLIT_TRAIN, SPLIT_TEST, SPLIT_VAL = 0, 1, 2
 # 1.755 s and is kept as such.
 TIME_RELABEL_MS = {(1, "1.755"): 1775}
 
+# Canonical column names: (canonical, lowercase prefix of the CFD-Post column). More
+# specific prefixes ("velocity u") come before generic ones ("velocity [").
+_COLUMN_RULES: List[tuple] = [
+    ("u", "velocity u"), ("v", "velocity v"), ("w", "velocity w"), ("speed", "velocity ["),
+    ("wss_x", "wall shear x"), ("wss_y", "wall shear y"), ("wss_z", "wall shear z"),
+    ("wss", "wall shear ["), ("p", "pressure"), ("x", "x ["), ("y", "y ["), ("z", "z ["),
+    # CFD-Post names and the Fluent names it passes through
+    ("mu_t", "eddy viscosity"), ("mu_t", "turbulent viscosity"),
+    ("k", "turbulence kinetic energy"), ("k", "turbulent kinetic energy"),
+    ("omega", "turbulence eddy frequency"), ("omega", "specific dissipation rate"),
+    ("gamma", "intermittency"), ("wall_dist", "wall distance"),
+]
 
+
+# --------------------------------------------------------------------------- parsing
+def _canonical_name(raw: str) -> Optional[str]:
+    key = raw.strip().lower()
+    return next((canon for canon, prefix in _COLUMN_RULES if key.startswith(prefix)), None)
+
+
+def canonicalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename CFD-Post columns to canonical names; drop unrecognized and repeated ones."""
+    seen, keep, names = set(), [], []
+    for pos, col in enumerate(df.columns):
+        canon = _canonical_name(str(col))
+        if canon is None or canon in seen:
+            continue
+        seen.add(canon)
+        keep.append(pos)
+        names.append(canon)
+    out = df.iloc[:, keep].copy()
+    out.columns = names
+    return out
+
+
+def read_cfdpost_blocks(path: str | Path) -> Dict[str, pd.DataFrame]:
+    """Parse a multi-block CFD-Post export into ``{block name: DataFrame}``.
+
+    Surface-only fields such as wall shear are ``null`` at interior nodes and become NaN;
+    a column that is null throughout a block is removed, and the velocity magnitude is
+    dropped (it is recomputable from u, v, w). Coordinates are float64, fields float32.
+    """
+    text = Path(path).read_text(encoding="utf-8", errors="ignore")
+    blocks: Dict[str, pd.DataFrame] = {}
+    for chunk in text.split("[Name]")[1:]:
+        name, _, rest = chunk.strip().partition("\n")
+        _, _, table = rest.partition("[Data]")
+        df = pd.read_csv(io.StringIO(table.strip()), na_values=["null"], skipinitialspace=True)
+        df = canonicalize_columns(df).drop(columns=["speed"], errors="ignore")
+        df = df.dropna(axis=1, how="all")
+        for col in df.columns:
+            df[col] = df[col].astype(np.float64 if col in ("x", "y", "z") else np.float32)
+        blocks[name.strip()] = df
+    return blocks
+
+
+# --------------------------------------------------------------------------- parquet cache
 def raw_time_ms(case_id: int, stem: str) -> int:
     """Snapshot time in ms for a raw export filename stem such as ``"1.78"`` or ``"2.40"``."""
     return TIME_RELABEL_MS.get((case_id, stem), int(round(1000 * float(stem))))
@@ -53,19 +105,18 @@ def raw_exports(root: Path = FULL_RAW_DIR) -> List[tuple]:
         if not m:
             continue
         case_id = int(m.group(1))
-        for csv in sorted(folder.glob("*.csv")):
-            out.append((case_id, raw_time_ms(case_id, csv.stem), csv))
+        out += [(case_id, raw_time_ms(case_id, csv.stem), csv) for csv in sorted(folder.glob("*.csv"))]
     return out
 
 
 def convert_export(case_id: int, t_ms: int, path: Path, overwrite: bool = False) -> List[Path]:
     """Split one raw export into per-block parquet files; returns the files written."""
     FULL_DIR.mkdir(parents=True, exist_ok=True)
-    written = []
     targets = {b: FULL_DIR / f"case{case_id:02d}_{b}_t{t_ms}.parquet"
                for b in ("solid", "wall", "aneurysm", "inlet", "outlet")}
     if not overwrite and all(p.exists() for b, p in targets.items() if b != "aneurysm"):
-        return written
+        return []
+    written = []
     for block, df in read_cfdpost_blocks(path).items():
         dest = FULL_DIR / f"case{case_id:02d}_{block}_t{t_ms}.parquet"
         if overwrite or not dest.exists():
@@ -78,21 +129,12 @@ def convert_all(cases: Optional[List[int]] = None, overwrite: bool = False) -> L
     """Convert every raw whole-domain export (optionally only some cases)."""
     written = []
     for case_id, t_ms, path in raw_exports():
-        if cases and case_id not in cases:
-            continue
-        written += convert_export(case_id, t_ms, path, overwrite=overwrite)
+        if not cases or case_id in cases:
+            written += convert_export(case_id, t_ms, path, overwrite=overwrite)
     return written
 
 
-def snapshot_time_ms(rec, phase: str, times_ms: Dict) -> int:
-    """Snapshot time (ms) for a phase: an explicit time, or ``"original"`` for the
-    instant the case's older exports were taken at (it varies from case to case)."""
-    t = times_ms.get(phase)
-    if t is None or t == "original":
-        return int(round(1000 * float(rec.files["WSS"][phase]["time_s"])))
-    return int(t)
-
-
+# --------------------------------------------------------------------------- loaders
 def load_block(case_id: int, block: str, t_ms: int, columns=None) -> Optional[pd.DataFrame]:
     path = FULL_DIR / f"case{case_id:02d}_{block}_t{t_ms}.parquet"
     return pd.read_parquet(path, columns=columns) if path.exists() else None
@@ -118,8 +160,8 @@ def wall_normals_from_volume(wall: np.ndarray, interior: np.ndarray,
     """Unit wall normals pointing into the lumen.
 
     The direction is the local-PCA surface normal; the sign comes from the nearest
-    interior fluid nodes. Flipping toward the cloud centroid, as the aneurysm-clip
-    path does, fails on the U-shaped vessel, whose centroid lies outside the lumen.
+    interior fluid nodes (the U-shaped vessel's centroid lies outside the lumen, so
+    flipping toward it would fail).
     """
     wall = np.asarray(wall, float)
     _, nb = cKDTree(wall).query(wall, k=min(k, len(wall)))
@@ -134,8 +176,8 @@ def wall_normals_from_volume(wall: np.ndarray, interior: np.ndarray,
 
 @lru_cache(maxsize=32)
 def load_full_snapshot(case_id: int, t_ms: int, block_mm: float = 2.0, val_every: int = 5,
-                       rho: float = 1060.0) -> Dict[str, np.ndarray]:
-    """All training/scoring arrays for one (case, time), in SI units.
+                       rho: float = RHO) -> Dict[str, np.ndarray]:
+    """All arrays for one (case, time), in SI units.
 
     ``vol_*`` are the interior fluid nodes (the zero-velocity wall nodes of the volume
     block are dropped; the wall arrays carry them), ``vol_nut`` is mu_t / rho and
@@ -144,7 +186,7 @@ def load_full_snapshot(case_id: int, t_ms: int, block_mm: float = 2.0, val_every
     """
     vol = load_block(case_id, "solid", t_ms, ["x", "y", "z", "u", "v", "w", "p", "mu_t"])
     if vol is None:
-        raise FileNotFoundError(f"no full export for case {case_id} at {t_ms} ms in {FULL_DIR}")
+        raise FileNotFoundError(f"no export for case {case_id} at {t_ms} ms in {FULL_DIR}")
     xyz = vol[["x", "y", "z"]].to_numpy(np.float64)
     uvw = vol[["u", "v", "w"]].to_numpy(np.float64)
     inside = np.linalg.norm(uvw, axis=1) > 0
@@ -176,7 +218,7 @@ def load_full_snapshot(case_id: int, t_ms: int, block_mm: float = 2.0, val_every
         "outlet_xyz": outlet[["x", "y", "z"]].to_numpy(np.float64),
         "outlet_p": outlet["p"].to_numpy(np.float64),
         # the aneurysm wall zone, and the volume nodes whose nearest wall node is on it
-        # (the sac); both all-False for healthy cases, for splitting scores by region
+        # (the sac); both all-False for healthy cases
         "wall_aneurysm": wall_aneurysm,
         "vol_sac": wall_aneurysm[nearest_wall],
     }

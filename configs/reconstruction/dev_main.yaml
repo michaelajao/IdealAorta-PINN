@@ -1,7 +1,8 @@
-# Pilot stage 2: the registered comparison on the development cases (frozen 2026-09-25).
+# Development test, stage 2: the prespecified comparison on the development cases
+# (Cases 1 and 9; frozen 2026-09-25).
 # Gate (failed 2026-09-26): unsteady + oracle beats the best non-PINN comparator by >= 15 %
 # on both aneurysm-wall WSS and pressure, in both cases, at systole.
-name: pilot_main
+name: dev_main
 cases: [1, 9]
 windows:
   systole: {times: [1775, 1780], target: 1780, draws: [[2.5, 0], [2.5, 1]]}
