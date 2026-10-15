@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-15",
+  "original_preserved": true,
+  "paragraph_or_line_revisions": 42,
+  "compiled_pages": 50,
+  "rendered_pages": 50,
+  "compilation_errors": 0,
+  "unresolved_references": 0,
+  "overfull_boxes": 0,
+  "underfull_boxes": 10,
+  "visual_review": "All final pages inspected in contact sheets; detailed inspection of pages 1, 4, 26 and 32. No clipping, overlaps, missing figures or unexpected blank pages observed.",
+  "presentation_limit": "Inherited literature table is dense. This is an editorial review draft, not journal-specific final typesetting.",
+  "scientific_limit": "Raw CFD, ANSYS project files, trained models and run records were unavailable; experiments were not rerun. Author checks remain in source and review.",
+  "detector_or_provenance_test_performed": false,
+  "displayed_math_blocks_preserved": true,
+  "displayed_math_block_count": 16,
+  "table_inputs_preserved": true,
+  "figure_inputs_preserved": true,
+  "original_citation_keys": 67,
+  "revised_citation_keys": 56,
+  "missing_revised_citation_keys": []
+}

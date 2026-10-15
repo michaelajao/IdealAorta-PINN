@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Median of seven case means at 2.5~mm; each reconstructed case mean uses three paired draws. Entries are node-weighted relative L2 errors. Pressure is conditional on oracle CFD eddy viscosity. Full CFD denotes the same post-processing applied to complete velocity; its error is a reference, not a strict lower bound.}
+\label{tab:recon_summary}
+\begin{tabular}{llccccc}
+\toprule
+Phase & Quantity & Continuity & Data-only & RBF & Linear & Full CFD \\
+\midrule
+Systole & Velocity & 0.044 & 0.052 & 0.146 & 0.226 & 0.000 \\
+Systole & Pressure & 0.023 & 0.028 & 0.079 & 0.292 & 0.019 \\
+Systole & Wall shear & 0.356 & 0.333 & 0.609 & 0.834 & 0.191 \\
+Diastole & Velocity & 0.038 & 0.039 & 0.130 & 0.242 & 0.000 \\
+Diastole & Pressure & 0.094 & 0.063 & 0.132 & 0.167 & 0.037 \\
+Diastole & Wall shear & 0.163 & 0.161 & 0.374 & 0.615 & 0.042 \\
+\bottomrule
+\end{tabular}
+\end{table}
