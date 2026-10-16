@@ -70,7 +70,7 @@ PHASE = {T_SYS: "Systole", T_DIA: "Diastole"}
 AXIS_Y = 0.030                 # y (m) of the descending-branch axis; the medial plane is z = 0
 SEGMENT_PAD = 0.010            # m added to each side of the aneurysm zone for the montages
 COLOR_SCALE = {"speed": (0, 1.6), "wss_systole": (0, 20.0), "wss_diastole": (0, 1.5),
-               "tawss": (0.1, 12.0), "mps": (40, 110)}
+               "tawss": (0.1, 12.0), "mps": (0, 160)}
 CMAP_FIELD, CMAP_ERROR = "turbo", "PuOr_r"
 TIE_COLOR, LIMIT_COLOR, MEDIAN_COLOR, DRAW_COLOR = "black", "#b22222", "#555555", "#9a9a9a"
 PRESSURE_FORMS = (
@@ -411,7 +411,7 @@ def wss_montages() -> Dict[str, Path]:
 def mps_montage() -> Path:
     from matplotlib.colors import Normalize
     return _montage(read_mps, Normalize(*COLOR_SCALE["mps"]),
-                    "maximum principal stress on the inner wall surface (kPa)", "mps", "both", size=0.3)
+                    "maximum principal stress on the inner wall surface (kPa)", "mps", "neither", size=0.3)
 
 
 def xwss_lines(tol: float = 1.0e-3, sigma: float = 0.8e-3) -> Path:

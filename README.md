@@ -18,6 +18,7 @@ estimate, so the comparison isolates the reconstruction itself.
 
 - [Data](#data)
 - [Setup](#setup)
+- [Manuscript and Overleaf](#manuscript-and-overleaf)
 - [Reproducing the results](#reproducing-the-results)
 - [Outputs](#outputs)
 - [Code layout](#code-layout)
@@ -63,6 +64,44 @@ pip install -r requirements.txt
 
 All commands are run from the repository root as `python main.py <command>`;
 `python main.py -h` lists them and `python main.py <command> -h` gives their options.
+
+## Manuscript and Overleaf
+
+The current manuscript is `doc/IdealAorta_EACFM/main.tex`, based on Abaid's latest
+Overleaf text with the verified Case 8 stress correction. Its supporting files are
+`bib/`, `tables/` and `figures/` in the same directory. The broader editorial review
+has not been merged into this version.
+
+`figures/generated/confirm_p_sys.dat` and `confirm_p_dia.dat` contain the pressure
+scatter-plot coordinates read directly by PGFPlots during compilation. They are
+required figure inputs; keep them alongside the PDF and PNG figures.
+
+For the existing Overleaf project, extract the single current upload package
+`report/overleaf_update.zip` and replace its five files at their matching paths:
+
+```text
+main.tex
+tables/mps_summary.tex
+figures/generated/mps_montage.pdf
+figures/generated/confirm_p_sys.dat
+figures/generated/confirm_p_dia.dat
+```
+
+Keep `main.tex` as the main document and use pdfLaTeX. The checked preview is
+`report/main.pdf`. Compare any subsequent coauthor changes before replacing the
+live Overleaf root file.
+
+Previous drafts, audit evidence and the complete pre-cleanup snapshot are retained
+in `report/research_archive.zip`; `cleanup_manifest.json` inside it records paths
+and SHA-256 hashes. Raw data remain under `data/`; the active replacement Case 8
+export is `data/raw/MPS/Case 8.xls`. Keep temporary builds and verification renders
+outside the manuscript source directory and remove them after checking.
+
+To compile locally from the repository root:
+
+```bash
+latexmk -cd -pdf -outdir=../../report/latex-build doc/IdealAorta_EACFM/main.tex
+```
 
 ## Reproducing the results
 
