@@ -14,7 +14,7 @@
   ],
   "existing_cases_not_untouched": "Cases 1-9 and controls 10-12 have supplied complete-field audits; no independent geometry claim for these",
   "future_rule": "Goal paused; no evaluation access or scheduling until design revision and a new source/design seal incorporating this correction",
-  "supersedes": "prior_access_declaration_original.json; original retained, including its overbroad wording",
+  "supersedes": "The original declaration, including its overbroad wording, is retained in Git commit 68f97f1 rather than duplicated in the working tree",
   "evaluation_related_velocity_summary_access": {
     "file": "aorta03_HR.h5",
     "accessed_utc": "2026-10-22T10:04:25.362Z",

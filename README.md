@@ -81,16 +81,8 @@ Copy these entries from `doc/IdealAorta_EACFM/` into the Overleaf project root:
 - `figures/` (including the `.dat` plot coordinates)
 
 Keep the relative paths, select `main.tex` as the main document, and use
-pdfLaTeX. [Overleaf upload instructions](doc/OVERLEAF_UPLOAD.txt) give the full
-procedure. To generate a standalone source folder, zip and compiled check:
-
-```powershell
-python tools/prepare_overleaf.py --build
-```
-
-This produces `report/overleaf_review/`, `report/overleaf_review.zip` and a
-SHA-256 file manifest. A later delivery needs a fresh `--output` path. The zip
-contains manuscript inputs only; generated packages and builds stay outside Git.
+pdfLaTeX. The existing `report/overleaf_review.zip` contains these manuscript
+inputs for upload. The compiled paper is `report/main.pdf`.
 
 Figure 4 distinguishes network pressure used by the development momentum PINNs
 from pressure integrated after velocity fitting for the confirmatory field.
@@ -105,11 +97,10 @@ remaining author decisions are in
 are retained in `doc/author_clarifications_2026-10-22.json`. The full-paper review
 source is `doc/review_2026-10-22.tex`; its PDF is under `report/`.
 
-`doc/revision_audit_2026-10-23/` retains Abaid's original source, the supplied
-audit, compact pause/test/access receipts and the historical preservation
-manifest. Superseded comparison PDFs/sources and one-off scripts were removed
-from the active tree after hash-verified copying to
-`report/cleanup_history_2026-10-23/`; Git commit `8b61fe6` also preserves them.
+`doc/revision_audit_2026-10-23/` retains Abaid's original source, the outstanding
+author decisions and the corrected prior-access declaration. Superseded review
+copies, cleanup helpers and duplicate records have been removed. Git history
+preserves the earlier versions without keeping more copies in the working tree.
 The older unique research archive remains at `report/research_archive.zip`.
 Raw data and scientific evidence are retained outside the code release.
 

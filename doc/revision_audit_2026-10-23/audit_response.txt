@@ -1,21 +1,9 @@
-Cleanup follow-up, 23 October 2026
-The historical response below records the earlier checkpoint. The accepted
-review text and red revision marks now live in the active
-doc/IdealAorta_EACFM/main.tex and its two table captions. The standalone
-comparison source, duplicate PDFs and one-off scripts have been removed from
-the active tree after verified copying to report/cleanup_history_2026-10-23/.
-They also remain recoverable from Git commit 8b61fe6. The original Overleaf
-source and compact audit receipts remain here. The renamed preservation
-manifest_at_pause.json describes that historical checkpoint, not the cleaned
-directory. Scientific wording and unresolved author decisions were not changed
-by the cleanup. See doc/OVERLEAF_UPLOAD.txt for the current upload instructions.
-
 Response to the supplied audit, 23 October 2026
 
 Execution decision
 The experiment goal is paused at the user's request. The waiting v22
 eight-thread launch controller was stopped at 11:39:47 UTC before any stage
-started. Its terminal receipt is retained here. The existing v21 capacity
+started. Its terminal receipt remains in Git history. The existing v21 capacity
 sweep continues unchanged; it cannot launch the full pilot. No further fits,
 benchmarks, or independent evaluation are authorized by this checkpoint.
 The paused scientific goal remains incomplete.
@@ -37,12 +25,11 @@ Preserved manuscript history and colour correction
 abaid_overleaf_2026-10-22.tex is the reviewer's reconstructed original source,
 copied without alteration. Its SHA-256 is
 548f7d005f985924ada1927944928167b7b84aedcb37a66f36ed237c7a5c7bba.
-main_before_audit.tex preserves the current canonical manuscript at receipt
-of this audit. The original blue/red comparison and its LaTeX source are
-retained without alteration. The red coauthor review is a separate generated
-document: additions are red in the manuscript font and deleted wording is
-hidden. Both changed table captions are included and marked red. Figure
-artwork retains its scientific colours. This review PDF is not author approval.
+The active manuscript is doc/IdealAorta_EACFM/main.tex, with revisions in red
+and deleted wording removed. Both changed table captions are marked red.
+Figure artwork retains its scientific colours. Earlier comparisons and receipts
+remain in Git history; duplicate copies and cleanup helpers were deleted.
+The existing README contains the Overleaf upload instructions.
 
 Pending author decisions before sharing a final manuscript
 1. The missing solid-mesh convergence study is factual, but Abaid explicitly
@@ -119,7 +106,8 @@ in aorta03_HR.h5, a related single-frame anatomy. The actual scalar values and
 access time are disclosed in prior_access_declaration_corrected.json. The
 correction does not claim a full target-array download or an evaluated method
 score. It also does not certify that all authors have never accessed these data.
-The original declaration and controller inputs remain retained as history;
+The original declaration remains in Git history, and controller inputs remain
+in the experiment evidence;
 future protocols must use the corrected declaration and a fresh design seal.
 
 Nothing has been sent to Abaid or published. The author questions above are
