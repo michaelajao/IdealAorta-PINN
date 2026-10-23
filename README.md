@@ -67,40 +67,89 @@ All commands are run from the repository root as `python main.py <command>`;
 
 ## Manuscript and Overleaf
 
-The current manuscript is `doc/IdealAorta_EACFM/main.tex`, based on Abaid's latest
-Overleaf text with the verified Case 8 stress correction. Its supporting files are
-`bib/`, `tables/` and `figures/` in the same directory. The broader editorial review
-has not been merged into this version.
+The current manuscript is `doc/IdealAorta_EACFM/main.tex`, updated from the Overleaf
+export supplied on 22 October 2026. The supplied bibliographies are in `bib/`;
+supporting tables and figures are in `tables/` and `figures/` in the same directory.
+The downloaded duplicate source, duplicate bibliographies and LaTeX build products
+have been removed from the manuscript directory.
+
+The revision addresses Abaid's four questions: the three data-only endpoint
+advantages, a qualified acceleration-sensitivity explanation checked against the
+saved Brosnan records, the all-nine reference audit and its overlap with the
+confirmation geometries, and the maximum of the displayed Figure 13 stress field.
+CFD-related edits use `\cfdrevision{...}` and appear in red for coauthor review.
+
+Figure 4 distinguishes direct development momentum-PINN pressure from the
+confirmatory velocity-to-pressure integration route. Figure 5 omits the redundant
+numbered stage strip. The study protocol is explained in Section 3.8 and the
+Discussion. The signed axial WSS profiles in Figure 11 use a reduced width,
+with body text following it on the same page and forced gaps removed around the neighbouring figures.
+Scientific wording distinguishes
+regional stress medians from local maxima, TAWSS medians from upper percentiles,
+and dependent draw counts from independent statistical evidence.
+
+The full manuscript and selected primary papers were reviewed on 22 October.
+`report/review_2026-10-22.pdf` contains the Saitta explanation, reviewer comments,
+evidence priorities, Abaid's 22 October responses and remaining checks; its editable source is
+`doc/review_2026-10-22.tex`. The manuscript now discusses the prior SIREN work
+more explicitly and cites acquisition-aware synthetic MRI and structural
+material/thickness sensitivity studies. Author-reported solver settings and their
+remaining gaps are recorded in `doc/author_clarifications_2026-10-22.json`.
+The red methods edits distinguish pressure-only Static Structural loading at
+1.775 s from common flow exports at 1.780 s, specify first-order implicit time
+integration and sac/neck inflation, and distinguish supplied plane area averages
+from node-weighted whole-domain calculations. No dedicated solid-mesh convergence
+study was performed; native projects and transfer/export verification remain
+unavailable for independent inspection.
+
+`experiments/measurement_realism_2026_10_22/` now contains an isolated pilot runner,
+separate observation values, differentiable spatial averaging, operator-aware
+scalar and globally divergence-free vector RBFs, and matched-count removal controls.
+Every method retains the same observation hold-out. Volume boxes are certified
+against a declared point-cloud geometry proxy, not the unavailable native CFD
+surface. Local numerical checks pass; dependency-backed verification and CFD
+execution are recorded separately on Brosnan. See its `README.txt` and `pilot.json`
+for smoke, feasibility and full development stages. The independent evaluation
+design is specified in `independent_protocol.json` and must be revised and sealed
+before evaluation access. The experiment goal is paused following the 23 October
+audit, and automatic feasibility/final pilot launches have been disabled. The
+existing capacity sweep continues unchanged; no full pilot or independent
+evaluation has completed. Historical experimental configurations and numerical
+results are retained. Manuscript wording, including the captions in
+`tables/reference_floor.tex` and `tables/robustness.tex`, has changed.
+
+`doc/revision_audit_2026-10-23/` preserves Abaid's reconstructed 22 October
+Overleaf source, the supplied audit, the original comparison PDF and source,
+and the controller-stop receipt. The original comparison uses blue additions
+and red deletions; `main_red_review.tex` builds a coauthor copy with additions
+in red and deleted wording hidden. It is a review document, not a replacement
+for the canonical `main.tex`. Pending scientific and wording decisions are
+listed in `audit_response.txt` in that directory.
 
 `figures/generated/confirm_p_sys.dat` and `confirm_p_dia.dat` contain the pressure
 scatter-plot coordinates read directly by PGFPlots during compilation. They are
 required figure inputs; keep them alongside the PDF and PNG figures.
 
-For the existing Overleaf project, extract the single current upload package
-`report/overleaf_update.zip` and replace its five files at their matching paths:
+Keep `main.tex` as the main document and use pdfLaTeX. The current coauthor
+review is `report/main_red_review.pdf` (54 pages), with revisions in red and
+deleted wording hidden. Its source and preserved comparison are in
+`doc/revision_audit_2026-10-23/`. The older `report/main.pdf` predates the
+23 October Hager bibliography correction. The two previously missing
+bibliography entries are included in the sources.
+The obsolete duplicate data-availability statement was removed; the latest
+coauthor-supplied policy text is retained. Compare subsequent coauthor changes
+before replacing the live Overleaf root file.
 
-```text
-main.tex
-tables/mps_summary.tex
-figures/generated/mps_montage.pdf
-figures/generated/confirm_p_sys.dat
-figures/generated/confirm_p_dia.dat
-```
-
-Keep `main.tex` as the main document and use pdfLaTeX. The checked preview is
-`report/main.pdf`. Compare any subsequent coauthor changes before replacing the
-live Overleaf root file.
-
-Previous drafts, audit evidence and the complete pre-cleanup snapshot are retained
+Previous drafts, audit evidence and the removed/replaced pre-cleanup files are retained
 in `report/research_archive.zip`; `cleanup_manifest.json` inside it records paths
 and SHA-256 hashes. Raw data remain under `data/`; the active replacement Case 8
 export is `data/raw/MPS/Case 8.xls`. Keep temporary builds and verification renders
 outside the manuscript source directory and remove them after checking.
 
-To compile locally from the repository root:
+To compile locally from the repository root in PowerShell:
 
-```bash
-latexmk -cd -pdf -outdir=../../report/latex-build doc/IdealAorta_EACFM/main.tex
+```powershell
+latexmk -cd -pdf "-outdir=$env:TEMP/IdealAorta-latex" doc/IdealAorta_EACFM/main.tex
 ```
 
 ## Reproducing the results

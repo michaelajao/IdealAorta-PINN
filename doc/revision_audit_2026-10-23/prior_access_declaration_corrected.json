@@ -1,0 +1,34 @@
+{
+  "recorded_utc": "2026-10-23T11:53:55.831754+00:00",
+  "scope": "this recorded agent workflow; declaration is not technical proof of all authors prior access",
+  "external_evaluation_velocity_arrays_accessed": false,
+  "external_evaluation_pressure_WSS_accessed": false,
+  "external_evaluation_files_downloaded": false,
+  "allowed_prior_access": "Publication, release manifests and bounded metadata inspection; also scalar velocity-component maxima from aorta03_HR.h5, related to the proposed aorta03trans evaluation anatomy. No blanket claim that no velocity values were inspected.",
+  "development_velocity_arrays_accessed": [
+    "aorta01_HR.h5: eight predetermined rows for calibration and adapter checks"
+  ],
+  "native_development_cases": [
+    1,
+    9
+  ],
+  "existing_cases_not_untouched": "Cases 1-9 and controls 10-12 have supplied complete-field audits; no independent geometry claim for these",
+  "future_rule": "Goal paused; no evaluation access or scheduling until design revision and a new source/design seal incorporating this correction",
+  "supersedes": "prior_access_declaration_original.json; original retained, including its overbroad wording",
+  "evaluation_related_velocity_summary_access": {
+    "file": "aorta03_HR.h5",
+    "accessed_utc": "2026-10-22T10:04:25.362Z",
+    "datasets_and_stored_values": {
+      "u_max": 0.9341978430747986,
+      "v_max": 0.5550472736358643,
+      "w_max": 0.6191098690032959
+    },
+    "units": "stored scalar values; not independently reinterpreted as units here",
+    "scope": "summary datasets read through bounded HTTP ranges; full velocity arrays not read by that inspection",
+    "bytes_downloaded": 1432128,
+    "http_range_requests": 22,
+    "relation": "related single-frame anatomy; not the proposed aorta03trans_HR.h5 temporal file",
+    "evidence": "retained tool output, 2026-10-22T10:04:25.362Z, session 01a16311-ab3e-76b0-88e2-a9ae4beb8836",
+    "implication": "disclose prior summary access; do not describe related anatomy as wholly unseen"
+  }
+}

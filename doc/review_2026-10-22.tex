@@ -1,0 +1,165 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=22mm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,amsmath,amssymb,booktabs,tabularx,enumitem}
+\usepackage[colorlinks=true,urlcolor=blue,linkcolor=blue]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+\setlist{nosep,leftmargin=*}
+\setlength{\emergencystretch}{2em}
+\title{Manuscript review and evidence priorities}
+\author{IdealAorta-PINN working review}
+\date{22 October 2026}
+\begin{document}
+\maketitle
+
+\textbf{Scope.} The earlier 55-page manuscript was read, including its 20 figures, 18 tables, Appendix A and references. This review was updated after Abaid's author clarification on 22 October; page references identify the reviewed draft. Page references below describe the copy at the start of this pass; section/figure numbers remain stable. The complete 18-page published Saitta PDF was read and its equations, tables and figures inspected. Other full-text readings are identified below. The manuscript subsequently received the wording and layout corrections described here.
+
+\textbf{Evidence boundary.} Available evidence comprises the manuscript, supplied CFD/stress exports, code/configurations and saved Brosnan records. The user confirmed that native ANSYS projects and solver reports are with Abaid. Settings absent from the supplied materials cannot be independently verified here. No new CFD/structural solve or noisy-data neural reconstruction was completed in this pass.
+
+\section{Reviewer assessment}
+
+\textbf{Recommendation: major revision.} There is a credible computational-benchmark contribution. The present evidence does not establish validated MRI reconstruction or clinical wall-failure prediction. Journal quartile is not a certification of an individual manuscript; the important question is whether the novelty, comparisons and verification survive specialist scrutiny.
+
+The paper links two investigations. First, it examines parent-vessel diameter and directional sac asymmetry under a common imposed flow waveform. Second, it uses those fields to ask what information supports recovery of pressure and wall shear stress (WSS). The connection is strongest when geometry-dependent jets, recirculation, closure and near-wall gradients explain reconstruction difficulty. Reusing a dataset alone is not sufficient to make one scientific story.
+
+The strongest elements are the data-only ablation, matched observations, common post-processing, complete-velocity reference, case-wise comparisons, adverse diastolic example and failed momentum-PINN development gate. The principal result is conditional: the neural representation performs well against the tested interpolants; continuity is not uniformly beneficial; good velocity reconstruction does not guarantee accurate pressure or wall gradients.
+
+Independence of the entire pipeline, realistic observations/comparators and structural verification are the main evidence gaps. Additional figures cannot resolve them. Emphasize the information sensitivities of the specified reconstruction pipeline, with geometry/stress findings presented as conditional computational comparisons.
+
+\section{Saitta et al. (2024): full-paper explanation}
+
+\textbf{Already cited.} Saitta is reference [53] in the reviewed Introduction (p.~4) and Discussion 6.3 (p.~44), with key \texttt{saitta2024implicit}. The bibliography correctly gives \emph{Computer Methods and Programs in Biomedicine} 246, 108057, DOI \href{https://doi.org/10.1016/j.cmpb.2024.108057}{10.1016/j.cmpb.2024.108057}. The manuscript now discusses its relationship to our work more explicitly.
+
+\subsection{Question and formulation}
+
+Saitta asks whether a continuous neural representation can denoise and increase the sampling resolution of 4D flow MRI without training on many paired high-/low-resolution examples. A separate network is fitted to each case's measured velocity. Their term \emph{unsupervised} means no high-resolution labels are used during that fit; measured velocity and wall boundary values still provide supervision.
+
+A sinusoidal representation network (SIREN) maps coordinates to velocity:
+\[
+ f_\theta(x,y,z,t)=(u,v,w), \qquad
+ h_{\ell+1}=\sin(W_\ell h_\ell+b_\ell).
+\]
+The loss fits measured velocities at voxel centres and penalizes nonzero wall velocity. It has no interior continuity or momentum residual. The chosen architecture has 20 layers and 300 neurons per layer, selected through a synthetic-case architecture comparison. A continuous function can be queried between samples, but an arbitrarily fine output grid does not prove recovery of information lost in acquisition.
+
+Their main interpretation is that the architecture itself regularizes the fit. Its preference for smoother structure can suppress noise while retaining flow features. Extra capacity can instead fit noise: the wider 500-neuron model performs worse at severe degradation. The authors explicitly distinguish this representation effect from regularization added by a PDE loss.
+
+\subsection{Experiments and results}
+
+The synthetic experiment starts with patient-derived ascending-aorta CFD, exported every millisecond over a 200~ms interval. Measurements are generated through temporal averaging to 40~ms, regular-grid interpolation, complex velocity encoding, Fourier-domain truncation and noise/undersampling. The observations have 2~mm isotropic spacing; three degradation settings use SNR values 20, 5 and 2 with different sampling fractions. This is much closer to an acquisition model than selecting exact values from nearby CFD nodes.
+
+Comparators include linear interpolation, divergence-free wavelet denoising plus interpolation, divergence-free RBF denoising plus interpolation, and a local space-time RBF. The endpoints are velocity and velocity-derived WSS. Their shared WSS calculation uses no-slip and two inward-normal samples at 0.5 and 1.0~mm to fit a quadratic profile. The paper does not report a pressure-recovery experiment.
+
+Tables 6--7 favour the selected SIREN under the tested synthetic settings, although all methods underestimate WSS at severe degradation. In the in vivo example, denoised fields preserve mean/maximum flow measurements to within 5\%, with a larger discrepancy in reverse-flow index. There is no independent high-resolution truth for the patient's velocity or WSS. This supports feasibility and consistency, not measured accuracy of those hidden fields.
+
+\subsection{Implications for our paper}
+
+\begin{enumerate}
+\item Neural vascular reconstruction without a PDE penalty is already established. Our data-only result is consistent with that precedent; it is not the first demonstration of a useful continuous neural flow representation.
+\item Our stronger contribution concerns derived fields: two-snapshot pressure, oracle-versus-molecular closure, fitting-penalty comparisons, a complete-velocity reference, and adverse cases in a transitional-flow family.
+\item The observation operator belongs in both measurement generation and fitting. A voxel average should be compared with an averaged model prediction, rather than silently treated as an exact centre-point velocity.
+\item Saitta itself has limitations: one synthetic anatomy supports architecture selection and comparison, followed by one in vivo demonstration. The authors acknowledge pointwise fitting despite acquisition averaging, uncertain wall location and inability simply to recreate lost high-frequency content.
+\item No direct comparison has been run. Our SiLU/Fourier-feature network is not their SIREN, and their error normalization differs from our relative $L^2$ metric. Comparing headline percentages between the papers would be invalid.
+\end{enumerate}
+
+For example, their RMSE equations normalize by the maximum reference magnitude, while ours normalizes by the reference field's $L^2$ norm. Their direction metric uses an absolute inner product. A future comparison should declare consistent vector, magnitude and directional metrics rather than inherit a label without its definition.
+
+\section{What the other primary readings add}
+
+\textbf{Ferdian et al. (2020), 4DFlowNet.} The complete 14-page PDF was read and key figures inspected. Its useful precedent is velocity encoding, k-space cropping/noise, VENC/SNR augmentation and a physical phantom comparison. It trains a supervised super-resolution network, unlike our per-case fitting. Its third synthetic anatomy is used for validation and testing, with checkpoint selection based on validation error; it is not an impeccable untouched-test template. The volunteer example has no high-resolution truth, and pressure/WSS recovery is not evaluated. \href{https://doi.org/10.3389/fphy.2020.00138}{10.3389/fphy.2020.00138}.
+
+\textbf{Zhu et al., material/thickness study (online 2024; issue 2025).} The complete main text was read, but not supplementary files. It separately reports solid elements, through-thickness resolution, convergence, prestress and stress statistics, then tests material/thickness substitutions. This motivates documenting and testing our structural assumptions. Its ascending-aorta numerical sensitivities cannot be transferred to our descending-aorta family. \href{https://doi.org/10.1007/s13239-024-00756-9}{10.1007/s13239-024-00756-9}.
+
+\textbf{Zhu et al. (2025), combined MRI/FSI study.} The complete main text was read. Already cited as \texttt{zhu2025combined}, it supplies our aneurysmal-wall constants of 98.8/779.1~kPa, but uses different healthy-wall properties and thicknesses. Its two-way coupled, prestressed setup differs from ours. The citation supports the parameter source, not verification of our one-way calculation. Common properties across our models can isolate geometry if the controls are described accordingly. \href{https://doi.org/10.1007/s10237-025-01939-6}{10.1007/s10237-025-01939-6}.
+
+\textbf{McNally (2011), divergence-free interpolation.} The full five-page paper and author's correction were reviewed. Its matrix kernel supports a non-neural solenoidal comparator. The examples concern magnetohydrodynamics, not biomedical validation. Divergence, boundary fitting, accuracy and scale must still be checked for our implementation. \href{https://doi.org/10.1111/j.1745-3933.2011.01037.x}{10.1111/j.1745-3933.2011.01037.x}; correction at \url{https://www.colinmcnally.ca/dfi/}.
+
+Campobasso et al. (2018) was additionally reviewed with focused attention to its complete methods/results/discussion. Its separate fluid/solid convergence and explicit incremental-stress reference illustrate why load conventions must accompany stress values. No numerical accuracy threshold was imported from it. \href{https://www.emse.fr/~avril/ART/ART118.pdf}{Author-hosted paper}.
+
+This is a focused review, not an exhaustive systematic review. Fathi et al. (2020) and McGreivy \& Hakim (2024) remain relevant existing citations, but this pass does not claim a completed full-PDF rereading of them.
+
+\section{Major comments and required evidence}
+
+\subsection{Independence and selection}
+
+\textbf{Reviewed pp.~13, 17--18, 33--34 and 44.} Cases 1 and 9 developed reconstruction settings; Cases 2--8 were outside that development. However, complete confirmation fields informed post-processing. Saved Brosnan reference records also contain pressure/WSS audits for controls 10--12. None of the twelve is untouched by complete-field auditing.
+
+The manuscript now distinguishes fitting/velocity-based tuning from reference-field post-processing selection. Common processing supports matched comparisons; it does not restore independence. New seeds, noise or times on existing geometries do not create an independent geometry test.
+
+Freeze the entire pipeline before accessing new targets: observation generation, preprocessing, model/comparator selection, pressure convention, derivative stencils, WSS distance, regions, metrics and failure handling. Then evaluate genuinely new geometries or a suitable external dataset. Any external cases used to debug these choices become development evidence.
+
+Retain the historical candidate and results. Supply a selection receipt explaining why continuity was carried forward over data-only; Tables 11--12 currently emphasize momentum arms rather than the complete staged-candidate comparison.
+
+\subsection{Measurements and comparators}
+
+\textbf{Reviewed pp.~14, 16, 38--42 and 46.} Exact nearest-node sampling supplies unusually precise near-wall values. Equal inputs make the comparison paired under this design; they do not establish robustness to noise or averaging. The revised wording states this.
+
+The near-wall ablation also removes 28--32\% of observations. It demonstrates sensitivity to that removal, but does not isolate location from total sample count or identify a universal 1~mm resolution threshold. Add matched-count random removal and consider interior replacement. Keep the scoring target set fixed where possible, or report its change explicitly.
+
+A bounded next study should use existing development Cases 1 and 9, both phases, paired observation/noise draws and frozen post-processing. Compare point samples, physical-volume averages, noise alone and their combination. The same forward operator must be applied to predictions during fitting. Averaging irregular CFD nodes would introduce mesh-density weighting.
+
+Add an appropriate divergence-free comparator and, if claiming architectural progress over Saitta, a SIREN comparison. Use observed-data tuning only and report pressure/WSS, velocity, divergence/flux, boundary fit, time and memory. Existing RBF robustness checks do not establish superiority over every interpolant.
+
+The historical code also retains the approximately 10\% observation hold-out for neural fitting, while final interpolants use all observations after any tuning. This does not favour the neural method by supplying it more samples, but identical available measurements are not identical final fit counts. The manuscript now discloses this; align or explicitly compare refitting policies in the new pilot.
+
+Additive velocity noise is a kinematic sensitivity, not a complete MRI simulation. MRI realism also needs complex signal, VENC, spatial/temporal response, partial volume and reconstruction assumptions. Two adjacent snapshots cannot support realistic temporal averaging without denser exports.
+
+\subsection{Pressure and mechanism}
+
+\textbf{Reviewed pp.~7, 15--16, 31--33 and 44.} A smaller residual without a separate isotropic turbulent-stress term supports an empirical convention; it does not prove the meaning of an ANSYS pressure variable. The revised text makes this distinction. Abaid has confirmed gauge pressure relative to the Fluent operating pressure. This resolves the datum, but does not establish inclusion or exclusion of the isotropic turbulent-stress contribution; retain that distinction.
+
+The diastolic explanation remains a hypothesis. Acceleration error contains $(\epsilon_2-\epsilon_1)/\Delta t$, so lower velocity error at one instant does not guarantee a better derivative. A useful post hoc diagnostic would quantify paired errors/covariance, the acceleration contribution and integrated pressure error across every case/draw. Do not present that diagnostic as a new prospective test.
+
+\subsection{Fluid and solid verification}
+
+\textbf{Reviewed pp.~10--12 and 28--29.} Table 4 concerns steady fluid maximum WSS. Its finest pair is non-monotonic and its GCI assumes order two. It does not verify transient pressure/TKE or structural stress. The reported temporal/cycle checks need supporting values and geometry/quantity definitions.
+
+Abaid confirms that no dedicated solid-mesh convergence study was performed. Patch-independent tetrahedra were used, with 514,324 elements in Case 2; counts vary by geometry. Element formulation/order, through-thickness layers and stress averaging/extrapolation remain unspecified. Element count and an expectation of small sensitivity do not establish convergence. Retain a concise limitation and test the reported regional statistics and deformation if a refinement study is undertaken.
+
+The revised Methods and Figure 3 now agree: one-way pressure-only transfer to the structural inner wall; Static Structural with large deflection enabled and ramped tabular loading. The pressure load is from 1.775 s in the third cycle, at the maximum prescribed outlet pressure; the common flow-field export is at 1.780 s. The idealized CAD was built directly in ANSYS with no prestress and common thickness/material constants across all twelve models. Pressure reference versus structural external pressure, mapping coverage and quantitative transfer verification remain open. The unloaded reference is a modeling assumption; idealized CAD alone does not establish physiological stress accuracy.
+
+The MPS files contain node ID, coordinates and stress only. Abaid identifies the supplied results as inner-wall MPS at the systolic structural load step, but nodal averaging/extrapolation and an exact named result export remain undocumented. Current plotting uses proximity to the CFD wall; an exact named structural inner-wall export would improve reproducibility. Case 8's historical von-Mises issue is resolved and should not be repeated as a current objection.
+
+\subsection{Scope, statistics and provenance}
+
+\textbf{Reviewed pp.~18--19, 30--31, 34 and 42--46.} Fixed inflow is a controlled experiment, not evidence that patients with different aortic calibres have equal cardiac output. Fixed taper cannot isolate taper effects. Mean speed differs from area-averaged normal velocity. Abaid identifies D1--D8 summaries as area-averaged velocity magnitude and TKE, exported as Trmavg. Their physical time and any temporal averaging interval remain unknown; the export name does not supply those definitions. The manuscript now distinguishes these supplied area averages from node-weighted calculations on the whole-domain exports.
+
+Geometry is the scientific replication unit. Three draws and two phases of one geometry are dependent. The prespecified 14-unit decision rule can remain descriptive; it does not create a population sample. Report adverse cases and avoid significance claims based on independent draws.
+
+Node weighting and different near-wall refinement can affect geometry comparisons. Area/volume-weighted checks need the missing connectivity/weights. Structural patterns remain conditional on material, thickness and boundary assumptions; they do not identify a validated failure site.
+
+\section{Completed work and next steps}
+
+\textbf{Manuscript.} Corrected the information-use contradiction, sampling claim, pressure-definition inference, fixed-flow extrapolation, near-wall count confound and broad comparator claim. Expanded the Saitta comparison and qualified information requirements. Structural text identifies the deviatoric Yeoh expression and common-material control design, and acknowledges missing verification. Corrected DNS terminology, asymmetric/fusiform descriptions, unsupported compliance/perfusion statements, Table 15's phase-wise sample description and Figure 4's time interval. Numerical tables and historical results remain unchanged.
+
+\textbf{Figure 11.} Width remains 76\% of the text width versus the earlier 85\%. Removing forced page breaks and float barriers lets body text fill the spaces below Figures 10 and 11. The compiled page was visually checked. All original 20 figures remain; the rejected protocol matrix was not restored.
+
+\textbf{Separate experimental preparation.} The isolated pilot now has native field/geometry adapters, operator-aware neural and compact scalar/divergence-free RBF fitting, a shared observation hold-out, full known wall/inlet constraints and matched-count removal controls. Fifty dependency-backed integration checks passed on Brosnan (snapshot v13). All four native case--phase units were prepared with quadrature checks. The full scored development pilot is incomplete; these are implementation and preparation results, not evidence of reconstruction improvement.
+
+For noise standard deviation $\sigma$, cross-time correlation $r$ and snapshot separation $\Delta t$,
+\[
+ \sigma_a=\frac{\sqrt{2(1-r)}\,\sigma}{|\Delta t|}.
+\]
+Independent noise of 0.02~m/s gives about 5.66~m/s$^2$ at 5~ms and 2.83~m/s$^2$ at 10~ms. These are propagation calculations, not measured reconstruction errors.
+
+\textbf{Native comparator status.} The iterative full-wall comparator probes did not establish adequacy. A separate direct scalar-ridge candidate passed known wall/inlet and original-system stationarity checks for one Case 1 systolic condition. This is a numerical feasibility result for one scalar candidate; it does not establish divergence-free capacity, the four-unit comparison or a completed scientific pilot. Saved failures remain part of the development record.
+
+\textbf{Execution order:} finish native comparator capacity and the bounded development pilot; freeze the complete evaluation design; then access genuinely new evaluation targets. New noise draws on geometries already used in development do not establish geometry independence. Wording and extra figures cannot substitute for evidence.
+
+\textbf{External adapter.} The public \href{https://auckland.figshare.com/articles/dataset/4DFlowNet_-_high_resolution_aortic_CFD_dataset/24424888}{Auckland 4DFlowNet CFD dataset} provides velocity/mask data, without pressure, WSS, eddy viscosity or native wall normals. Only aorta01 has been downloaded and checksum-verified for adapter development. Axis mapping was audited, and eight short point/volume fitting records passed the adapter integration assessment. This is not an accuracy comparison. Evaluation geometries aorta02 and aorta03-transient remain unaccessed as full velocity arrays, and the final evaluation protocol remains unsealed. Publication-derived spacing and a conservative mask proxy must remain explicit. No independent pressure/WSS evaluation is established by this dataset.
+
+\section{Abaid's response and remaining evidence}
+
+The six questions were sent by Michael. Abaid replied on 22 October at 14:28 and added at 15:17 that inflation was applied only on aneurysm sacs and necks. These are author-reported methods; native solver projects/reports were not available for independent inspection.
+
+\begin{enumerate}
+\item \textbf{Solid mesh: partly resolved.} Patch-independent tetrahedra and Case 2's count are supplied; no dedicated solid convergence study exists. Still needed: element type/order, through-thickness resolution and refinement of the reported stress statistics. Do not suppress the missing-convergence limitation because it might be requested only at review.
+\item \textbf{Load and solve: substantially resolved.} One-way pressure-only inner-wall loading, Static Structural, large deflection, ramp and 1.775 s timing are supplied. Still needed: operating/external-pressure values, mapping method/coverage and transfer verification. The claimed three-order separation of viscous traction and pressure was not independently quantified here.
+\item \textbf{Reference wall: resolved as a modeling declaration.} Directly constructed idealized CAD, no prestress, common 2 mm thickness and Yeoh constants across twelve models. These define the model; they do not validate its physiological stress state.
+\item \textbf{Stress export: partly resolved.} Inner-wall MPS at the systolic load step is confirmed; both MPS and von Mises were computed. Still needed: exact result-object/export identity, averaging/extrapolation and a named inner-wall selection. The earlier Case 8 file issue is resolved in the active replacement export.
+\item \textbf{Fluid verification: partly resolved.} Steady Case 1 mesh check; second-order spatial discretization, first-order implicit time integration; ten inflation layers, growth 1.2, smooth transition, sac/neck only; waveform UDFs. Still needed: supporting time-step/cycle comparisons, inlet turbulence definitions, convergence criteria and first-layer resolution. No inference of second-order time integration or globally inflated walls is justified.
+\item \textbf{Slices and pressure: partly resolved.} Plane speed/TKE are area averages (Trmavg); pressure is gauge relative to operating pressure. Slice physical time/temporal averaging and the isotropic turbulent-pressure convention remain unspecified.
+\end{enumerate}
+
+\end{document}

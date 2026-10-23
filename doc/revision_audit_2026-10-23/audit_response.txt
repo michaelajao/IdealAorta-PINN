@@ -1,0 +1,118 @@
+Response to the supplied audit, 23 October 2026
+
+Execution decision
+The experiment goal is paused at the user's request. The waiting v22
+eight-thread launch controller was stopped at 11:39:47 UTC before any stage
+started. Its terminal receipt is retained here. The existing v21 capacity
+sweep continues unchanged; it cannot launch the full pilot. No further fits,
+benchmarks, or independent evaluation are authorized by this checkpoint.
+The paused scientific goal remains incomplete.
+
+Verified current status
+The current 128-record feasibility and 384-record final development stages
+have zero records. There are earlier smoke, adapter and partial development
+fits; those do not establish the requested accuracy comparison. All 66 tests
+passed on Brosnan with zero skips. The isolated local environment passed 58
+and skipped eight dependency-backed checks; that distinction was accurate and
+must remain explicit. Test success does not establish scientific adequacy.
+
+Case 1 systolic capacity has not settled: the pointwise divergence-free fit
+changed held-out predictions by 3.143%, above 2%; the volume-averaged scalar
+fit changed validation error by 4.271%, also above 2%. These failures are
+retained. No threshold was relaxed and no new basis fit was launched.
+
+Preserved manuscript history and colour correction
+abaid_overleaf_2026-10-22.tex is the reviewer's reconstructed original source,
+copied without alteration. Its SHA-256 is
+548f7d005f985924ada1927944928167b7b84aedcb37a66f36ed237c7a5c7bba.
+main_before_audit.tex preserves the current canonical manuscript at receipt
+of this audit. The original blue/red comparison and its LaTeX source are
+retained without alteration. The red coauthor review is a separate generated
+document: additions are red in the manuscript font and deleted wording is
+hidden. Both changed table captions are included and marked red. Figure
+artwork retains its scientific colours. This review PDF is not author approval.
+
+Pending author decisions before sharing a final manuscript
+1. The missing solid-mesh convergence study is factual, but Abaid explicitly
+   preferred omitting it. Do not silently resolve that disagreement. Agree
+   one concise limitation with both authors and avoid repeating it in Methods
+   and Discussion. Never imply structural convergence was established.
+2. Replace audit-style phrases with normal author descriptions of what was
+   done and which sensitivities were not tested. Do not invent missing settings.
+3. Ask Abaid whether the export suffix was Trmavg or Trnavg, and obtain the
+   actual time/phase or averaging window for D1-D8. Transient averaging remains
+   a hypothesis; do not relabel these values as instantaneous or time-averaged
+   without confirmation. The export suffix itself need not appear in the paper.
+4. Replace 'a material difference' with a numerical description: the data-only
+   median is 0.031 lower (about 33%), with draw variability reported separately.
+   This is not evidence of a statistically reliable superiority.
+5. Distinguish PINNs with PDE penalties from data/boundary neural fields in the
+   Introduction, consistent with the Saitta discussion. Preserve the actual
+   comparison's limitations and let the authors decide headline wording.
+6. Hager's authors were verified against PubMed PMID 12063451. Several names
+   in the supplied bibliography are wrong, not just Bauer and Stern. The
+   corrected entry is listed in the checkpoint changes. Hager does not establish
+   that 2.0-2.6 cm spans the whole descending-aortic population range.
+7. Lu PMID 30769067 supports descending-aortic tapering generally. Its abstract
+   describes segment-specific taper, not a universal linear ratio of 0.8.
+   Unless the full text supports that exact ratio for the modeled segment,
+   describe 0.8 as this study's fixed modeling choice.
+8. The acceleration-omitted data-only error of 0.068 needs a traceable table or
+   supplement if retained as a result. Do not treat an unreported median as a
+   demonstrated causal mechanism for the continuity/data-only difference.
+
+Experiment revision required before restart (not implemented or sealed)
+The primary question is whether the manuscript's neural-versus-RBF ranking
+survives controlled noise and averaging with matched information. A new
+divergence-free comparator alone cannot answer that question.
+
+The revised design must include the prespecified historical RBF, its space-time
+RBF sensitivity, data-only and continuity neural fields, and the proposed scalar
+and divergence-free fits where feasible. Volume conditions additionally need
+a naive baseline that treats an average as a point observation, compared with
+the same model using the correct averaging operator. Freeze fitting/validation
+rows, boundary information, no-refit policy and hidden scoring targets.
+
+Separate temporal treatment from representation: report velocity and WSS
+comparisons alongside acceleration and pressure, and include a temporal RBF
+comparison before attributing pressure differences to the spatial architecture.
+Independent snapshot fits can amplify independent observation noise in finite
+differences. This is a design confound to test, not a proven explanation.
+
+Expand support/ridge grids when selection is on their boundary, with declared
+resource limits and observation-only tuning. Capacity coverage must include
+noise-free conditions and matched near-wall/random-removal controls, with a
+declared draw policy. Numerical-solve accuracy needs an error bound or a tighter
+reference-solve sensitivity that is small relative to the 2% capacity decision;
+an optimizer residual alone cannot certify that prediction accuracy.
+
+Use separate boundary diagnostics by aneurysm zone/neck and other wall regions,
+including upper quantiles/maxima and WSS-region slip. Selecting candidates using
+the same global boundary criterion does not independently validate no-slip
+accuracy; a lack of admissible candidates must be retained as a failure.
+
+Full-box interior averaging excludes crossing-wall boxes and does not simulate
+partial volume. Either add an explicit, physically stated wall-crossing forward
+model with independent verification, or restrict the claim to interior averaging
+and leave MRI/WSS realism unresolved. Do not silently equate these designs.
+
+Record a revised method/condition matrix and cost estimate before scheduling
+new work. The old 128/384 counts cannot describe an expanded method matrix.
+Do not resume either old controller automatically or mutate its code snapshot.
+
+Prior access correction
+The earlier blanket 'no velocity values' wording was too broad. A retained
+22 October tool result confirms inspection of u_max/v_max/w_max scalar datasets
+in aorta03_HR.h5, a related single-frame anatomy. The actual scalar values and
+access time are disclosed in prior_access_declaration_corrected.json. The
+correction does not claim a full target-array download or an evaluated method
+score. It also does not certify that all authors have never accessed these data.
+The original declaration and controller inputs remain retained as history;
+future protocols must use the corrected declaration and a fresh design seal.
+
+Nothing has been sent to Abaid or published. The author questions above are
+drafts for Michael to discuss with Abaid.
+
+Primary reference checks
+https://pubmed.ncbi.nlm.nih.gov/12063451/
+https://pubmed.ncbi.nlm.nih.gov/30769067/

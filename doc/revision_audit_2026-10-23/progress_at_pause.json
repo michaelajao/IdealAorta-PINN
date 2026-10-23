@@ -1,0 +1,545 @@
+{
+  "updated_utc": "2026-10-23T11:53:55.831754+00:00",
+  "goal_status": "paused at explicit user request; incomplete",
+  "progress_classification": "audit checkpoint; automatic pilot launch disabled; scientific design revision pending",
+  "remote_root": "/home/olarinoyem/measurement_realism_2026_10_22",
+  "source_snapshot": "code_v22 reporting/handover snapshot deployed and verified; all 38 Python hashes match; unchanged seven-file comparator/observation/capacity source preserves live v21 fits",
+  "local_python_sources_match_tested_snapshot": true,
+  "remote_tests": {
+    "status": "all_current_checks_pass",
+    "tests_run": 66,
+    "passed": 66,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "receipt": "checks/remote_v22_20261023/integration_tests_v22_receipt.json",
+    "scope": "complete current suite including real adapter-assessment-to-seal handover, absolute WSS RMS identity, Torch CPU/CUDA and historical scoring"
+  },
+  "smoke": {
+    "results": 8,
+    "unresolved_failures": 0,
+    "score_scope": "velocity only, 100 neural steps; not scientific comparison"
+  },
+  "early_full_scoring": {
+    "results": 1,
+    "scope": "Case 1 systole point data neural field, 2000 steps, old 2048-wall pool",
+    "sweep_status": "deliberately stopped after comparator inadequacy; no claim of full feasibility completion"
+  },
+  "prepared_units": {
+    "case01_t1780": {
+      "conditions": 8,
+      "quadrature_difference_per_frame": [
+        0.0006187619451725233,
+        0.0006194034205098784
+      ],
+      "counts": {
+        "point_all_sigma0": {
+          "fit": 5373,
+          "validation": 597,
+          "observation_sha256": "ef8d6a275a22ebd7e1a79e03c65dd07c136479bead5a158a48acd7be7ff845e5"
+        },
+        "point_core_sigma0": {
+          "fit": 2727,
+          "validation": 310,
+          "observation_sha256": "2c514125abe8129fad044fec11ff9b44746a15bcbb223a6f38eeaaa06700b303"
+        },
+        "exclude_near_wall_sigma0": {
+          "fit": 3637,
+          "validation": 418,
+          "observation_sha256": "ada8082802583645af9f94400cd61d6b33bb8294b3a529d95477e3c5f53b87b2"
+        },
+        "matched_random_removal_sigma0": {
+          "fit": 3637,
+          "validation": 418,
+          "observation_sha256": "6d621958035aa20e047a0f74e68b3b8007a2dbcea69b6e6003bc30ea7185b28e"
+        }
+      }
+    },
+    "case01_t2400": {
+      "conditions": 8,
+      "quadrature_difference_per_frame": [
+        0.00038392591923387887,
+        0.00038178916927017985
+      ],
+      "counts": {
+        "point_all_sigma0": {
+          "fit": 5373,
+          "validation": 597,
+          "observation_sha256": "aa68da83c1f2e5cb379284900bb7307c050684ddc53e59ae038375bda66543c1"
+        },
+        "point_core_sigma0": {
+          "fit": 2727,
+          "validation": 310,
+          "observation_sha256": "9d6203a676e8ed0b2c076b1d28211abf8b99748c7954304f4f9757e315009f54"
+        },
+        "exclude_near_wall_sigma0": {
+          "fit": 3637,
+          "validation": 418,
+          "observation_sha256": "bf2f8eb47eb2b72e00ffb149523cc667efd8e855b24f6eec5a98e5de954f7d13"
+        },
+        "matched_random_removal_sigma0": {
+          "fit": 3637,
+          "validation": 418,
+          "observation_sha256": "a9f33a3f71f6db32366fc7110f43a65256fcbf5f8365ff167b2428c968da4e61"
+        }
+      }
+    },
+    "case09_t1780": {
+      "conditions": 8,
+      "quadrature_difference_per_frame": [
+        0.0005408740984822699,
+        0.0005495094030739264
+      ],
+      "counts": {
+        "point_all_sigma0": {
+          "fit": 7346,
+          "validation": 816,
+          "observation_sha256": "8b90eb09927404aa87a90843358d3f39db58b730849d52648fdfdcaface47e7e"
+        },
+        "point_core_sigma0": {
+          "fit": 4063,
+          "validation": 442,
+          "observation_sha256": "580338e27620c88392f567c816d6e3d6dd68dceb46726be1f6b26a204ea6ffb2"
+        },
+        "exclude_near_wall_sigma0": {
+          "fit": 5306,
+          "validation": 583,
+          "observation_sha256": "f48dfb568b1ce90d2262e864a5d3cc7f5d32f0cc29d2f5016ecd103ee2f253ab"
+        },
+        "matched_random_removal_sigma0": {
+          "fit": 5306,
+          "validation": 583,
+          "observation_sha256": "380028e243777b32f7847de6d99535b02ca450de44571cce5693e542f64e6e7a"
+        }
+      }
+    },
+    "case09_t2400": {
+      "conditions": 8,
+      "quadrature_difference_per_frame": [
+        0.0003708954066619578,
+        0.00037034414650114297
+      ],
+      "counts": {
+        "point_all_sigma0": {
+          "fit": 7346,
+          "validation": 816,
+          "observation_sha256": "72b7aea12693e2af6078cbad603e755fb0646b5852fed2d69efaeaeb2186d281"
+        },
+        "point_core_sigma0": {
+          "fit": 4063,
+          "validation": 442,
+          "observation_sha256": "88f29ec7ad3f69148c5c040ee09806823b6a5f23e89dcdadb7073d6643bb45bd"
+        },
+        "exclude_near_wall_sigma0": {
+          "fit": 5306,
+          "validation": 583,
+          "observation_sha256": "93631d7bcc45ada561d8acdc4aba681225a1ed0fe6687df4bd827e6e0eaa5ae0"
+        },
+        "matched_random_removal_sigma0": {
+          "fit": 5306,
+          "validation": 583,
+          "observation_sha256": "2b4910389c8fab1cbe5d5c5ee867c62d4e2881fbf50d6e0c477e3352088bc130"
+        }
+      }
+    }
+  },
+  "primary_pressure_audit": {
+    "status": "audit_complete",
+    "solver": {
+      "istop": 2,
+      "iterations": 582,
+      "residual_norm": 6534346.557127729,
+      "condition_estimate": 20936.50784312942,
+      "normal_residual": 21.814258896034747,
+      "converged": true,
+      "atol": 1e-10,
+      "btol": 1e-10,
+      "iteration_limit": 6000,
+      "seconds": 57.45549390651286
+    },
+    "scores": {
+      "p_rel_l2": 0.11074976334311391,
+      "p_rms_Pa": 80.63554097171115,
+      "dp_pred_Pa": 924.2741290398188,
+      "dp_cfd_Pa": 986.1122569319713,
+      "p_rel_l2_sac": 0.13368846123141453
+    },
+    "prior_metric_absolute_difference": 5.073733100324773e-12,
+    "model_sha256": "b215fa85cbd687c6d9a83dbd4424dd7ac4fac3c3bc4432f37f631ae531966f0c",
+    "constants": [
+      1050.0,
+      0.0035
+    ],
+    "scope": "same saved development model and same mathematical historical pressure integration; solver diagnostics added"
+  },
+  "live_processes": [
+    {
+      "job": "capacity_v21",
+      "supervisor_pid": 1780664,
+      "child_pid": 1780672,
+      "last_verified": "2026-10-23T11:38:03.055207+00:00",
+      "scope": "unchanged existing capacity sweep only; no automatic full pilot launch"
+    }
+  ],
+  "implementation": {
+    "immutable_observations": true,
+    "operator_aware_neural_and_RBF_fits": true,
+    "global_solenoidal_vector_basis": true,
+    "shared_holdout_without_refit": true,
+    "matched_fitting_and_validation_removal_counts": true,
+    "fixed_scoring_targets": true,
+    "full_native_wall_constraints": true,
+    "all_methods_two_time_known_boundary_residuals": true,
+    "audited_pressure_convergence": true,
+    "observation_array_hash_recomputed_in_final_audit": true,
+    "partial_comparator_receipts_rejected_for_sealing": true,
+    "optional_float64_GPU_sparse_products": true,
+    "measurements_only_fitting_for_all_four_external_arms": true
+  },
+  "remaining": [
+    "author decisions and complete red manuscript review",
+    "revise scientific design using supplied audit before any new scheduling",
+    "full development comparison and independent protocol seal remain incomplete"
+  ],
+  "limitations": [
+    "volume certificates apply only to the oriented-point proxy, not unavailable native CAD/connectivity",
+    "synthetic additive velocity noise and averaging are not a complete MRI acquisition simulation",
+    "cap flux uses checked reconstructed planar quadrature, not a closed native surface",
+    "no independent pressure/WSS truth in the public velocity release",
+    "Abaid supplied author-reported solver details on 22 October; no solid-mesh convergence study; missing transfer/stress-export settings remain unverified"
+  ],
+  "evidence_file": "progress_evidence_v14.json",
+  "comparator_probe_v8": {
+    "status": "not_yet_adequate",
+    "first_converged_candidate": {
+      "radius_m": 0.01,
+      "ridge": 1e-07,
+      "two_frame_seconds": 69.77380863577127,
+      "val_observed_rel_l2": 0.2900690471322631,
+      "worst_wall_rms_over_U": 0.015950496929628372,
+      "worst_inlet_rms_over_U": 0.026205941603323877,
+      "boundary_gate_pass": false
+    },
+    "other_failures": "iteration limits at weaker ridge/wider support; 20 mm support exceeds old 300M nnz budget"
+  },
+  "external_adapter": {
+    "source_release": "10.17608/k6.auckland.24424888.v1",
+    "role": "aorta01 development only",
+    "full_download_checksum": "release MD5 verified",
+    "source_sha256": "7e8b876c15815ed6be8c518cfb6fba06b50bf824fef8ca8c2a16441c5a968fd7",
+    "spacing": "publication-derived 0.594 mm isotropic assumption; no stored affine/spacing",
+    "axis_audit": "passed on eight frames; direct component-to-grid mapping; no anatomical orientation claim",
+    "integration_assessment": "checks/remote_v22_20261023/public_adapter_assessment_v22.json",
+    "integration_records": 8,
+    "integration_failures": 0,
+    "scope": "short adapter checks only, not accuracy ranking; no pressure/WSS truth",
+    "held_out_velocity_arrays_accessed": false,
+    "held_out_files_downloaded": false,
+    "final_evaluation_seal": "not created; design requires revision and corrected access declaration",
+    "current_source_status": "v22 all eight fits and corrected actual adapter-to-external-contract handover passed",
+    "v19_assessment": "checks/remote_reconnected_v19/public_adapter_assessment_v19.json",
+    "v20_terminal": "checks/remote_v20_20261023/public_adapter_smoke_v20_terminal.json",
+    "v21_running_evidence": "checks/progress_v21_20261023T100229Z.json",
+    "v21_terminal": "checks/remote_v22_20261023/public_adapter_smoke_v21_terminal.json",
+    "actual_handover_receipt": "checks/remote_v22_20261023/adapter_real_handover_v22.json",
+    "v22_terminal": "checks/remote_v22_20261023/public_adapter_smoke_v22_terminal.json",
+    "evaluation_related_summary_values_accessed": true
+  },
+  "process_status_verified_utc": "2026-10-23T10:50:48.279270+00:00",
+  "subsequent_stop_request": {
+    "job": "compact_refined_v11_c01_sys",
+    "signal": "SIGTERM",
+    "receipt": "checks/compact_refined_v11_c01_sys_stop_reason.json",
+    "requested_utc": "2026-10-22T14:24:48.006534+00:00",
+    "terminal_confirmation": "verified returncode -15 at 2026-10-22T14:24:49.222132+00:00",
+    "terminal_receipt": "checks/remote_reconnected_v19/compact_refined_v11_c01_sys_terminal.json"
+  },
+  "direct_scalar_probe": {
+    "status": "direct_scalar_candidate_pass",
+    "scope": "Case 1 systolic noisy point condition only; not vector or capacity/full-pilot completion",
+    "evidence": "progress_evidence_v14.json: direct_scalar_v14_c01_sys/receipt.json",
+    "ridge": 1e-09,
+    "source": {
+      "path": "code_probe_v14/probe_direct_ridge.py",
+      "sha256": "9688cde3b5c5e706d216ea36f5cc97b76d5639b85a0c805addc26218df00b63a",
+      "verification": "embedded GPU/NumPy equivalence self-test; actual original-system stationarity measured"
+    }
+  },
+  "matched_CPU_GPU_trial": {
+    "evidence": "checks/cpu_gpu_matched_trial_v11.json",
+    "observed_elapsed_ratio": 30.484433051073054,
+    "scope": "one shared-machine candidate; both fail inlet gate; not universal benchmark"
+  },
+  "boundary_compatibility_audit": {
+    "evidence": "checks/boundary_compatibility_v14.json",
+    "finding": "no wall/inlet coordinate overlap within 1 micrometre on any native unit; all boundary rows retained"
+  },
+  "local_tests": {
+    "receipt": "checks/local_direct_capacity_v22_final.json",
+    "tests_run": 66,
+    "passed": 58,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 8,
+    "scope": "isolated CPU environment; all eight skipped tests subsequently passed on Brosnan"
+  },
+  "current_implementation": {
+    "direct_solver": "column-blocked float64 sparse Gram, explicit CPU/GPU allocation bounds, CPU or CUDA factorization, original-objective stationarity/refinement, no dense disk spill; explicit SciPy or Torch CPU factor backend retained in fit receipts and sealed execution settings",
+    "runner_integration": [
+      "compact_check.py",
+      "compact_capacity.py",
+      "run_pilot.py",
+      "run_public_pilot.py"
+    ],
+    "capacity_gate": "both finest basis levels must be numerically/boundary admissible, with absolute relative validation-error change and paired holdout-prediction change <=2%; both families/operators, all four native units",
+    "protocol_guard": "direct solver source/settings included in native/external seal; saved basis models and predictions hashed and plateau recomputed"
+  },
+  "network_observation": {
+    "checked_utc": "2026-10-23T09:07:17.241985+00:00",
+    "status": "normal Brosnan SSH restored and verified 23 October",
+    "host": "brosnan.coventry.ac.uk",
+    "current_route": "brosnan university hostname; Tailscale is not needed for this connection"
+  },
+  "resume_plan": "Old queue superseded by user pause; revise design and obtain explicit resume before launching",
+  "immutable_source_archive": {
+    "path": "source_v22.tar.gz",
+    "bytes": 91295,
+    "sha256": "1f398b40ebf50e3e0a55b5452be31490cf0e9a05fa351e7b721785c8ac00f234"
+  },
+  "test_development_history": {
+    "v18": "one invalid held-out affine-exactness expectation failed; retained receipt",
+    "v19": "all predictions agree with independent augmented ridge least-squares reference; production solver and native gates unchanged"
+  },
+  "remote_current_tests": {
+    "status": "all_current_checks_pass",
+    "tests_run": 66,
+    "passed": 66,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "receipt": "checks/remote_v22_20261023/integration_tests_v22_receipt.json",
+    "scope": "complete current suite including real adapter-assessment-to-seal handover, absolute WSS RMS identity, Torch CPU/CUDA and historical scoring"
+  },
+  "v19_retained_result": {
+    "scope": "Case 1 systolic noisy point scalar comparator only",
+    "capacity_status": "unsettled",
+    "relative_validation_change": 0.06975765157549643,
+    "relative_holdout_prediction_change": 0.06890312826912338,
+    "reason": "both exceed 2% declared tolerance",
+    "supersession": "old supervisor and child confirmed terminal after recorded performance-based switch",
+    "evidence": "checks/progress_v19_20261023T092212Z.json",
+    "stop_reason": "checks/remote_v20_20261023/compact_capacity_v19_superseded.json"
+  },
+  "v20_partial_capacity": {
+    "scope": "Case 1 systolic noisy point scalar comparator only",
+    "status": "capacity_settled",
+    "relative_validation_change": 0.00028316468288642615,
+    "relative_holdout_prediction_change": 0.006026880884343841,
+    "basis_counts": [
+      12737,
+      14592
+    ],
+    "boundary_gate": "both finest levels pass",
+    "evidence": "checks/remote_v20_20261023/compact_capacity_v20__case01_t1780__receipt.json",
+    "remaining": "vector and volume checks and remaining units incomplete"
+  },
+  "v20_execution_interruption": {
+    "first_worker_pid": 1776029,
+    "first_worker_returncode": -11,
+    "location": "after first divergence-free matrix assembly, before any vector fit result",
+    "supervisor_stopped_utc": "2026-10-23T09:45:55.303258+00:00",
+    "reason_receipt": "checks/remote_v20_20261023/native_v20_diagnostic_stop.json",
+    "second_worker_status": "confirmed absent after supervisor stop; uncompleted candidates unclassified",
+    "diagnostic_source": "diagnose_native_vector_v20.py"
+  },
+  "current_live_evidence": "checks/progress_v22_20261023T105048Z.json",
+  "native_vector_backend_probe": {
+    "status": "native_candidate_numerical_and_boundary_checks_pass",
+    "scope": "one observed-only Case 1 systolic noisy point vector candidate; diagnostic override of immutable v20 CPU factor/solve to Torch MKL, not full capacity",
+    "matrix_shape": [
+      121392,
+      38222
+    ],
+    "matrix_nnz": 268895115,
+    "maximum_original_stationarity": 9.102696848909588e-14,
+    "maximum_boundary_rms_over_U": 0.017621302118044614,
+    "receipt": "checks/remote_v21_20261023/native_vector_mkl_probe_v21_terminal.json",
+    "fit_receipt": "checks/remote_v21_20261023/native_vector_mkl_probe_v21_fit.json",
+    "production_implementation_checks": "v21: all 64 tests passed including same GPU-Gram/CPU-Torch combination and independent augmented least squares"
+  },
+  "v21_partial_capacity": {
+    "unit": "case01_t1780",
+    "scope": "partial observed-data capacity; not completed method comparison",
+    "point_scalar": "settled within the declared test",
+    "point_df": {
+      "status": "capacity_unsettled",
+      "validation_change": 0.011563706326761269,
+      "prediction_change": 0.03143311149816512,
+      "tolerance": 0.02
+    },
+    "volume_scalar": {
+      "status": "capacity_unsettled",
+      "validation_change": 0.04270866895572418,
+      "prediction_change": 0.013494970347356404,
+      "tolerance": 0.02
+    }
+  },
+  "v21_vector_production_progress": {
+    "scope": "first Case 1 systolic noisy point vector basis, radius 15 mm, three ridges",
+    "status": "all three candidates numerically and boundary admissible; not yet a basis plateau",
+    "minimum_observed_validation_rel_l2": 0.19548408241783174,
+    "weak_ridge_max_stationarity": 7.560219321263986e-14,
+    "maximum_boundary_rms_over_U": 0.017621302117450256,
+    "evidence": "checks/progress_v22_20261023T102314Z.json"
+  },
+  "protocol_handover_fix": {
+    "missing_solver_hash_reproduced": true,
+    "regression_receipt": "checks/adapter_handover_regression_v22.json",
+    "positive_and_stale_solver_checks": "test_audit: actual manufactured adapter assessment passes seal validator; changed direct solver hash rejected; current native 66-test receipt",
+    "native_capacity_restart_required": false,
+    "compatible_source_hashes": "resume_v22.json"
+  },
+  "queued_native_pipeline": {
+    "pid": 1791337,
+    "status": "stopped_at_user_request_before_any_stage",
+    "automatic_launch_enabled": false,
+    "receipt": "../../doc/revision_audit_2026-10-23/brosnan_pause_receipt.json",
+    "current_feasibility_records": 0,
+    "current_final_development_records": 0
+  },
+  "prepared_contract_revalidation": {
+    "status": "four_unit_prepared_observation_and_queued_contract_checks_pass",
+    "verified_utc": "2026-10-23T10:32:46.118128+00:00",
+    "receipt": "checks/remote_v22_20261023/native_prepared_contracts_v22.json",
+    "scope": "actual saved preparation arrays and queued settings, not completed fits or full-pilot scoring; final audit still required",
+    "checks": [
+      "32 actual saved observation conditions across four case/phase units",
+      "saved array hashes and unique anchors",
+      "inherited shared holdout IDs and exact base 10 percent",
+      "paired point/volume locations and noise",
+      "matched removal counts in both fitting and validation",
+      "all native wall fitting rows",
+      "queued seeds, full scoring, all four methods and no condition filter"
+    ],
+    "observation_timeout": "initial SSH observation elapsed after 50 seconds; successful receipt subsequently verified, process absent; no restart"
+  },
+  "documentation_cleanup": "README consolidated to current source/execution status; immutable code snapshots retain historical notes; all 38 Python hashes and sealed-design input hash remain unchanged",
+  "capacity_latest_candidate_progress": {
+    "scope": "Case 1 systolic noisy point vector, finer basis, incomplete grid",
+    "last_events": [
+      {
+        "event": "compact_frame_solved",
+        "vector": true,
+        "radius_m": 0.015,
+        "ridge": 1e-07
+      },
+      {
+        "event": "compact_trial",
+        "radius_m": 0.015,
+        "ridge": 1e-07,
+        "converged": true,
+        "boundary_gate_pass": true,
+        "val_observed_rel_l2": 0.20010784313595578,
+        "max_original_stationarity": 5.841199765531241e-14,
+        "boundary_rms_over_U": [
+          0.014014103880653748,
+          0.010476789411423493,
+          0.014018655711581961,
+          0.01046492219685363
+        ]
+      },
+      {
+        "event": "compact_frame_solved",
+        "vector": true,
+        "radius_m": 0.015,
+        "ridge": 1e-08
+      },
+      {
+        "event": "compact_frame_solved",
+        "vector": true,
+        "radius_m": 0.015,
+        "ridge": 1e-08
+      },
+      {
+        "event": "compact_trial",
+        "radius_m": 0.015,
+        "ridge": 1e-08,
+        "converged": true,
+        "boundary_gate_pass": true,
+        "val_observed_rel_l2": 0.1983228823281661,
+        "max_original_stationarity": 9.707825080717143e-14,
+        "boundary_rms_over_U": [
+          0.012702153536988905,
+          0.009388361716072659,
+          0.012723286036302659,
+          0.009374867642314863
+        ]
+      }
+    ],
+    "completed_levels": [
+      {
+        "path": "compact_capacity_v21/case01_t1780/level00/point_all_sigma0.02__df.json",
+        "status": "boundary_gate_pass",
+        "basis_centres": 12737,
+        "separation_m": 0.001,
+        "best_val_observed_rel_l2": 0.17734893189155368,
+        "selected_candidate": {
+          "radius_m": 0.02,
+          "ridge": 1e-09
+        },
+        "error": null
+      },
+      {
+        "path": "compact_capacity_v21/case01_t1780/level00/point_all_sigma0.02__scalar.json",
+        "status": "boundary_gate_pass",
+        "basis_centres": 12737,
+        "separation_m": 0.001,
+        "best_val_observed_rel_l2": 0.20158968511224867,
+        "selected_candidate": {
+          "radius_m": 0.02,
+          "ridge": 1e-09
+        },
+        "error": null
+      },
+      {
+        "path": "compact_capacity_v21/case01_t1780/level01/point_all_sigma0.02__scalar.json",
+        "status": "boundary_gate_pass",
+        "basis_centres": 14592,
+        "separation_m": 0.0008,
+        "best_val_observed_rel_l2": 0.20153262266472127,
+        "selected_candidate": {
+          "radius_m": 0.02,
+          "ridge": 1e-09
+        },
+        "error": null
+      }
+    ],
+    "evidence": "checks/progress_v22_20261023T105048Z.json"
+  },
+  "native_saved_vector_model_check": {
+    "status": "native_saved_model_divergence_diagnostic_complete",
+    "receipt": "checks/native_vector_divergence_v22.json",
+    "unit": "case01_t1780",
+    "condition": "point_all_sigma0.02",
+    "basis_level": 0,
+    "basis_centres": 12737,
+    "times_ms": [
+      1775,
+      1780
+    ],
+    "sampled_observed_holdout_locations": 64,
+    "heldout_prediction_max_abs_difference_m_s": 7.815970093361102e-14,
+    "maximum_finest_divergence_over_gradient": 2.0675659854176386e-07,
+    "coarse_to_finest_divergence_reduction": [
+      16.000836290854014,
+      15.999324499423171
+    ],
+    "scope": "same saved native development fit, two times, three finite-difference steps and 64 observed hold-out locations; numerical divergence diagnostic only, not full basis capacity or pressure/WSS performance"
+  },
+  "thread_resource_development": {
+    "status": "completed resource probes; no new benchmarks launched during pause",
+    "native_factor_and_solve_4_to_8_elapsed_ratio": 1.566966164,
+    "scope": "one shared-machine candidate, not a full-pilot speedup"
+  },
+  "external_prior_access_correction": "../../doc/revision_audit_2026-10-23/prior_access_declaration_corrected.json"
+}

@@ -1,0 +1,3 @@
+# Preserve exact evidence bytes and tested scientific source hashes on Windows.
+doc/revision_audit_2026-10-23/** -text
+experiments/measurement_realism_2026_10_22/*.py -text

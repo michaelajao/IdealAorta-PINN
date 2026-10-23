@@ -1,0 +1,234 @@
+{
+  "name": "measurement_realism_2026_10_22",
+  "status": "v22: all 66 scientific checks pass on Brosnan with zero skips. Live v21 capacity sweep retained because seven critical fit/observation/capacity sources are unchanged. Full 128/384 follow-on controller is waiting on capacity and current adapter checks. Exact external contract specified; protocol unsealed; full pilot incomplete.",
+  "purpose": "post_hoc_kinematic_sensitivity_on_existing_development_cases",
+  "cases": [
+    1,
+    9
+  ],
+  "windows_ms": [
+    [
+      1775,
+      1780
+    ],
+    [
+      2390,
+      2400
+    ]
+  ],
+  "targets_ms": [
+    1780,
+    2400
+  ],
+  "grid_spacing_m": 0.0025,
+  "grid_seeds": [
+    0,
+    1,
+    2
+  ],
+  "noise_seeds": [
+    22001,
+    22002,
+    22003
+  ],
+  "network_initialization_seeds": [
+    0,
+    1,
+    2
+  ],
+  "forward_operators": [
+    "point at snapped Cartesian-grid CFD nodes",
+    "physical full-box average at matched core centres in reconstructed point-cloud domain"
+  ],
+  "voxel_width_m": [
+    0.0025,
+    0.0025,
+    0.0025
+  ],
+  "quadrature_order": 3,
+  "quadrature_convergence_orders": [
+    3,
+    5,
+    7
+  ],
+  "partial_volume_policy": "exclude boxes not wholly certified inside the nearest-oriented-boundary-point proxy; native CFD-lumen certification is unavailable without original surface connectivity/CAD",
+  "near_wall_location_vs_count_control": {
+    "status": "prepared for both phases of Cases 1 and 9; full matched-method scoring pending",
+    "point_sample_arms": [
+      "all_points",
+      "exclude_within_1.25_mm_of_wall",
+      "uniform_random_removal_matched_to_exclusion_count"
+    ],
+    "random_removal_seeds": [
+      32001,
+      32002,
+      32003
+    ],
+    "pairing": "same base grid and exact original noise subset at both times; match BOTH fitting and validation counts; fixed original hidden scoring set",
+    "purpose": "separate the effect of losing near-wall locations from merely reducing sample count"
+  },
+  "noise_component_sigma_m_s": [
+    0.0,
+    0.01,
+    0.02,
+    0.04
+  ],
+  "noise_level_status": "provisional_absolute_kinematic_levels_not_calibrated_to_a_scanner",
+  "primary_temporal_noise_correlation": 0.0,
+  "diagnostic_temporal_noise_correlations": [
+    0.5,
+    1.0
+  ],
+  "candidate_methods": [
+    "continuity_neural_field",
+    "data_only_neural_field",
+    "operator_aware_scalar_compact_C4_Wendland_RBF",
+    "global_divergence_free_compact_C4_Wendland_vector_RBF"
+  ],
+  "saitta_2024_reproduction": {
+    "status": "separate_future_study_not_implemented_by_this_module",
+    "requirements": [
+      "paper_matched_SIREN_baseline",
+      "matching_spatial_and_temporal_acquisition_operator",
+      "matching_divergence_free_RBF_implementation_and_tuning",
+      "documented_differences_in_geometry_boundary_information_and_scoring"
+    ]
+  },
+  "postprocessing": {
+    "rho_kg_m3": 1050.0,
+    "mu_Pa_s": 0.0035,
+    "wss_offset_m": 0.00025,
+    "pressure_min_wall_m": 0.001,
+    "gradient_neighbours": 40,
+    "pressure_forms": [
+      "unsteady+mut",
+      "steady+mut",
+      "unsteady+lam",
+      "steady+lam"
+    ],
+    "solver": "same historical SciPy LSQR tolerances and 6000 iteration limit; retain stop codes and timing; unresolved convergence blocks final audit",
+    "absolute_WSS_reporting": "magnitude/vector RMS Pa recovered from historical relative L2 using same aneurysm-zone reference RMS and mask; estimator and relative scores unchanged"
+  },
+  "selection": "held_out_observations_only_no_hidden_velocity_pressure_or_WSS",
+  "blocking_adapters": [
+    "complete full-wall scalar/vector comparator adequacy checks",
+    "finish the full four-unit bounded feasibility sweep",
+    "complete all declared development draws and final budget",
+    "seal independent protocol with exact code/config and access declaration",
+    "native-geometry uncertainty remains conditional without original CAD/connectivity"
+  ],
+  "report": [
+    "velocity_L2",
+    "absolute_velocity_RMSE_m_s",
+    "pressure_L2",
+    "absolute_pressure_RMSE_Pa",
+    "WSS_L2",
+    "absolute_WSS_RMSE_Pa",
+    "divergence",
+    "flux_balance",
+    "acceleration_error",
+    "runtime",
+    "memory",
+    "observation_fit",
+    "boundary_fit",
+    "cap_flux_with_reconstructed_planar_area_quadrature",
+    "temporal_error_bias_variance_covariance_decomposition",
+    "pressure_solver_convergence"
+  ],
+  "unit_of_analysis": "case; paired phases and random draws remain dependent",
+  "provenance": [
+    "pilot_source_hashes",
+    "historical_source_hashes",
+    "processed_CFD_parquet_file_hashes",
+    "operator_config_hash",
+    "observation_and_split_hashes",
+    "all_seeds",
+    "software_versions",
+    "hardware",
+    "oracle_closure_flag"
+  ],
+  "quadrature_selection": "choose order 3 if its relative difference from order 5 is <=1% at both times; otherwise choose order 5 only if its difference from order 7 passes; fail closed otherwise",
+  "geometry_model": {
+    "native_CFD_surface": false,
+    "proxy": "nearest oriented boundary point tangent-plane domain",
+    "margin_m": 0.0001,
+    "certificate": "all boundary points that could be nearest anywhere in the full box must have positive inward-plane margins over the entire box",
+    "limitation": "surface sampling and normal uncertainty remain; kinematic averaging sensitivity, not scanner validation"
+  },
+  "fitting_policy": "exact 10% hold-out on base locations, carried through subsets at both times; every method retains its hold-out with no all-observation refit",
+  "primary_component_noise_sigma_m_s": [
+    0.0,
+    0.02
+  ],
+  "secondary_noise_levels_status": "0.01 and 0.04 plus temporal-correlation sensitivities remain planned after the bounded feasibility stage",
+  "execution_stages": {
+    "integration_smoke": {
+      "cases": [
+        1
+      ],
+      "targets_ms": [
+        1780
+      ],
+      "steps": 100,
+      "score": "velocity only; no pressure or WSS conclusion"
+    },
+    "bounded_feasibility": {
+      "cases": [
+        1,
+        9
+      ],
+      "targets_ms": [
+        1780,
+        2400
+      ],
+      "draws": [
+        0
+      ],
+      "steps": 2000,
+      "conditions_per_unit": 8,
+      "methods": 4,
+      "expected_results": 128,
+      "score": "full frozen pressure/WSS pipeline"
+    },
+    "development_pilot": {
+      "cases": [
+        1,
+        9
+      ],
+      "targets_ms": [
+        1780,
+        2400
+      ],
+      "draws": [
+        0,
+        1,
+        2
+      ],
+      "steps": 20000,
+      "conditions_per_unit": 8,
+      "methods": 4,
+      "expected_results": 384,
+      "score": "full frozen pipeline; exploratory, not new confirmation"
+    }
+  },
+  "provenance_note": "hashes identify the processed CFD actually consumed; no unverified claim of byte identity with original solver projects",
+  "boundary_information": "all available native wall nodes (zero velocity) and prescribed inlet values; 2048-node wall subsampling retained only as an explicitly labelled early feasibility sensitivity",
+  "comparator_development": {
+    "reduced_Gaussian": "not adequate at up to 1024 centres under observed-velocity and known-wall checks; retain trial records",
+    "next_candidate": "compact C4-Wendland kernels with affine background; compare full and geometry-thinned bases while retaining all native wall fitting constraints",
+    "selection": "converged candidates passing known wall AND inlet residual gates, then lowest shared observed-velocity hold-out error; no hidden pressure or WSS tuning",
+    "numerical_scaling": "optional right scaling of the augmented regularized system; preserve coefficient-L2 objective and record original-coordinate stationarity",
+    "GPU_products": "Matched CPU/GPU sparse-product trial agrees within saved numerical tolerances; one observed shared-machine elapsed ratio recorded, both fits fail inlet criterion",
+    "live_probe": "v21 capacity supervisor 1780664, child 1780672; scalar Case 1 systolic point basis settled; three first-basis vector 15 mm candidates pass numerical and boundary gates; larger radius now running.",
+    "direct_solver": "Explicit SciPy/Torch CPU factor backend included in saved contracts. All 64 current tests passed on Brosnan. Same native vector candidate completed with Torch MKL and original-equation stationarity below 1e-13; full capacity still pending.",
+    "basis_capacity": "compact_capacity.py retains all fitting rows and tests decreasing basis separation. Both finest levels must pass numerical/boundary gates, with <=2% absolute relative validation-error change AND paired hold-out prediction change. Requires both families/operators on all four native units.",
+    "v20_refinement": {
+      "numerical_backend": "manufactured C/F sparse products agree; row-contiguous CUDA inputs avoid measured layout bottleneck. Host-streamed Gram removes unnecessary full GPU Gram for CPU factorization. Objective/stationarity and boundary/holdout rules retained.",
+      "basis_grid": "v19 Case 1 systolic scalar point check changed validation error 6.98% and predictions 6.89% between 1.25 and 1.0 mm. Compare 1.0 and 0.8 mm next; include intermediate ridge 1e-8. All four units remain required. No hidden pressure/WSS used for this development decision.",
+      "resources": "host bound 160 GiB and 1.2 billion nnz for larger native vector bases; GPU bound stays 42 GiB; dense work arrays remain RAM-only.",
+      "execution": "Source-matched public adapter assessment passed eight fits. Native vector setup SIGSEGV retained; no completed four-unit capacity claim."
+    }
+  },
+  "external_adapter_development": "aorta01 release checksum, eight-frame axis audit and eight-fit short adapter assessment passed; publication-derived spacing and mask proxy explicit; no held-out velocity data accessed; final protocol unsealed",
+  "protocol_handover": "v22 adapter assessment retains direct_ridge.py hash, tested through actual seal validation and stale-solver rejection"
+}

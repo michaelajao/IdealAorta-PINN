@@ -1,0 +1,86 @@
+{
+  "source": "WhatsApp messages supplied by Michael in this conversation",
+  "author": "Abaid Ur Rehman",
+  "message_dates_local": [
+    "2026-10-22 14:28",
+    "2026-10-22 15:17"
+  ],
+  "evidence_level": "author-reported methods; native ANSYS projects/reports not independently inspected",
+  "reported": {
+    "solid_mesh": {
+      "dedicated_convergence_study": false,
+      "method": "patch-independent tetrahedral",
+      "case_2_elements": 514324,
+      "counts_vary_by_geometry": true
+    },
+    "loading": {
+      "coupling": "one-way Fluent to Mechanical",
+      "transferred_quantity": "pressure only",
+      "target": "inner wall",
+      "solver": "Static Structural",
+      "large_deflection": true,
+      "load_application": "ramped tabular input",
+      "CFD_load_time_s": 1.775,
+      "cycle": "third",
+      "selection": "maximum prescribed outlet pressure",
+      "common_flow_export_time_s": 1.78
+    },
+    "wall": {
+      "geometry": "idealized, built directly in ANSYS",
+      "prestress_applied": false,
+      "uniform_thickness_mm": 2,
+      "same_Yeoh_constants_all_12": true
+    },
+    "stress": {
+      "computed": [
+        "maximum principal stress",
+        "equivalent von Mises stress"
+      ],
+      "intended_reported": "maximum principal stress",
+      "export_surface": "inner wall",
+      "export_load_step": "systolic"
+    },
+    "fluid": {
+      "mesh_verification_case": 1,
+      "mesh_verification_flow": "steady",
+      "spatial_discretization": "second order",
+      "time_integration": "first-order implicit",
+      "inflation_layers": 10,
+      "growth_rate": 1.2,
+      "transition": "smooth",
+      "inflation_extent": "aneurysm sacs and necks only",
+      "waveforms": "inlet flow rate and outlet pressure UDFs"
+    },
+    "slices": {
+      "quantities": [
+        "velocity magnitude",
+        "TKE"
+      ],
+      "spatial_averaging": "area averaged per plane",
+      "export_name": "Trmavg",
+      "physical_time": null,
+      "temporal_averaging_interval": null
+    },
+    "pressure": {
+      "type": "gauge",
+      "reference": "Fluent operating pressure",
+      "operating_pressure_value": null,
+      "structural_external_pressure": null
+    }
+  },
+  "author_assessments_not_independently_verified": [
+    "mesh sensitivity expected immaterial",
+    "viscous traction roughly three orders below luminal pressure"
+  ],
+  "manuscript_policy": "CFD edits in red; retain absent solid-convergence limitation; distinguish 1.775 s structural load from 1.780 s flow exports; do not infer undocumented settings",
+  "remaining": [
+    "solid element formulation/order and through-thickness layers",
+    "pressure mapping method/coverage and verification",
+    "operating and structural external pressure values",
+    "stress result-object, averaging and extrapolation",
+    "supporting transient time-step/cycle comparisons and convergence criteria",
+    "inlet turbulence profiles and first-layer resolution",
+    "slice physical time and temporal averaging interval",
+    "isotropic turbulent-stress pressure convention"
+  ]
+}

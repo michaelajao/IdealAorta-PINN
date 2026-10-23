@@ -1,0 +1,297 @@
+{
+  "protocol_id": "independent_evaluation_design_2026_10_22_v1",
+  "status": "paused after 23 October audit; unsealed design requires comparator, capacity and temporal-treatment revision; related-anatomy scalar velocity maxima were inspected and are disclosed in doc/revision_audit_2026-10-23/prior_access_declaration_corrected.json",
+  "historical_information_use": {
+    "cases_1_and_9": "reconstruction development and new exploratory pilot",
+    "cases_2_to_8": "outside reconstruction development but included in complete-field postprocessing audit",
+    "controls_10_to_12": "also have saved complete-field pressure/WSS audits",
+    "independence_rule": "no existing case, new seed, new time or noisy variant can be relabelled an untouched geometry"
+  },
+  "seal_gate": [
+    "Complete numerical tests and development-case feasibility checks, including reported failures",
+    "Choose implementation and compute budgets using development data only",
+    "Seal source hashes, exact configuration, observation operator, geometry adapter, fit policy and scoring code",
+    "Record all prior external-data access, including u_max/v_max/w_max scalar values from related anatomy aorta03_HR.h5 inspected on 22 October; use the corrected declaration and do not claim the anatomy was wholly unseen",
+    "Do not inspect held-out high-resolution fields or performance before the seal",
+    "Any post-seal correction must be versioned and reported; outcome-informed changes require a new evaluation set",
+    "Adequacy receipts must cover BOTH scalar and solenoidal methods under noisy point and volume observations at all four development case/phase units, with exact source/settings matching the completed pilot"
+  ],
+  "track_A_public_velocity": {
+    "dataset": "https://doi.org/10.17608/k6.auckland.24424888.v1",
+    "license": "CC BY 4.0; retain attribution and release version",
+    "adapter_development": [
+      "aorta01_HR.h5"
+    ],
+    "held_out_geometries": [
+      "aorta02_HR.h5",
+      "aorta03trans_HR.h5"
+    ],
+    "exclude": {
+      "aorta03_HR.h5": "one frame only; not a temporal reconstruction reference"
+    },
+    "metadata_gate": [
+      "Validate velocity units, physical voxel spacing, axis/component conventions and 0.01 s frame interval against the release/publication",
+      "Use all frames of aorta01 for any necessary adapter checks; it is then development evidence",
+      "Develop and seal a geometry-only wall/cap identification algorithm on aorta01 before using evaluation geometries",
+      "If native cap/wall identity cannot be established, label the derived geometry explicitly and use an identical boundary contract across methods",
+      "Do not use hidden evaluation velocities to identify wall, cap, inflow waveform or model-selection settings"
+    ],
+    "windows_by_published_frame_index": [
+      [
+        9,
+        10
+      ],
+      [
+        27,
+        28
+      ],
+      [
+        45,
+        46
+      ],
+      [
+        63,
+        64
+      ]
+    ],
+    "window_rule": "four predetermined windows distributed through the 71 indexed frames; do not call them systole/diastole without waveform alignment",
+    "physical_times": "derive from verified release time interval; record frame-index origin explicitly",
+    "sampling_spacing_m": 0.0025,
+    "operators": [
+      "point at continuous-field coordinates",
+      "physical full-box average with the same integral in each fitting loss"
+    ],
+    "primary_component_noise_sigma_m_s": [
+      0.0,
+      0.02
+    ],
+    "primary_temporal_noise_correlation": 0.0,
+    "draws": [
+      {
+        "grid": 0,
+        "noise": 22001,
+        "init": 0
+      },
+      {
+        "grid": 1,
+        "noise": 22002,
+        "init": 1
+      },
+      {
+        "grid": 2,
+        "noise": 22003,
+        "init": 2
+      }
+    ],
+    "point_vs_average_location_control": "point and averaged conditions use exactly the same certified full-box centres, split and noise realization",
+    "partial_volume": "exclude crossing boxes; report lost coverage and wall distances; this is not a complete MRI acquisition simulation",
+    "primary_endpoint": "pooled two-frame vector relative L2 on all fixed unobserved fluid-mask vertices in each window, then average across draws/windows within each geometry; sampled short adapter runs are excluded from final evaluation",
+    "secondary_endpoints": [
+      "absolute vector RMSE in m/s",
+      "95th-percentile vector error",
+      "velocity errors by fixed mask-distance bins (image-grid proxy, not native wall distance)",
+      "model finite-difference divergence and common-HR-grid divergence/reference error",
+      "temporal acceleration error",
+      "runtime and memory"
+    ],
+    "pressure_and_WSS": "This velocity-array release supplies no independent pressure/WSS truth. This track cannot validate the complete original pressure/WSS pipeline.",
+    "statistical_unit": "geometry (two held-out units); frames/windows/draws are dependent; no population significance claim",
+    "missing_boundary_data_rule": "If the release does not supply trustworthy numeric inlet conditions or geometry-only wall/cap identification cannot be established on aorta01, predeclare an identical measurements-only velocity contract for all methods, omitting unsupported boundary targets. Label it a restricted-information external velocity robustness test; it does not validate the complete original pressure/WSS pipeline. Retain unusable-geometry and method failures.",
+    "array_index_convention": "zero-based HDF5 row indices for the four predetermined windows; aorta01 timeframe metadata labels these rows 1..71. Physical time is 0.01*timeframe seconds after omission of the initialized zero frame. Validate this metadata contract before opening evaluation velocities.",
+    "adapter_development_access": {
+      "file": "aorta01_HR.h5",
+      "file_id": 42875266,
+      "metadata_verified": [
+        "71 frames",
+        "aorta_model=1",
+        "boundary_cond=0 is a label, not a numeric boundary waveform",
+        "timeframe=1..71",
+        "fractional mask values in [0,1]",
+        "no stored spacing/affine/axis labels"
+      ],
+      "development_velocity_arrays_inspected": true,
+      "full_file_checksum": "verified release MD5 10043cda23d60e7a3e06f519fa1e6ac9; SHA256 7e8b876c15815ed6be8c518cfb6fba06b50bf824fef8ca8c2a16441c5a968fd7",
+      "inspected_zero_based_rows": [
+        9,
+        10,
+        27,
+        28,
+        45,
+        46,
+        63,
+        64
+      ]
+    },
+    "spatial_coordinate_gate": "Use the publication-derived 0.594 mm isotropic spacing as an explicit assumed grid definition; HDF5 contains no spacing/affine. The identity stored-component-to-grid mapping was calibrated on aorta01 and is frozen for evaluation; do not reselect it from held-out velocities. Report that anatomical origin/orientation are not independently established.",
+    "mask_proxy": {
+      "primary_threshold": 0.6,
+      "source": "upstream 4DFlowNet documented mask_threshold default; this is an image-grid convention, not a native CFD wall",
+      "fluid_cells": "all eight interpolation-cell vertices must exceed the threshold",
+      "observation_centres": "continuous Cartesian grid inside wholly fluid interpolation cells; no snapping to HR vertices",
+      "full_box_certificate": "all interpolation cells intersecting the complete box plus 0.1 mm margin must be wholly fluid; check interior holes as well as the outer box",
+      "geometry_only_sensitivities": [
+        0.5,
+        0.6,
+        0.9
+      ]
+    },
+    "selected_boundary_contract": "measurements-only external velocity robustness: no numeric inlet profile, no no-slip targets, no outlet pressure/gauge targets for ANY method; shared geometry mask supplies sampling/collocation support only. The boundary_cond integer is not a usable waveform.",
+    "canonical_axis_calibration": {
+      "status": "development calibration passed; numerical grid convention only",
+      "component_to_grid_axes": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "best_divergence_over_gradient_ratios": [
+        0.07746939452473979,
+        0.05634755344034046
+      ],
+      "runner_up_to_best_ratios": [
+        5.627059522288053,
+        7.624868515471862
+      ],
+      "stencils_grid_steps": [
+        1,
+        2
+      ],
+      "development_source": "aorta01 only, 50000 geometry-only interior points, eight predetermined frames",
+      "global_sign": "first mapped sign positive; anatomical orientation not independently established"
+    },
+    "boundary_and_flux_endpoints": "No boundary residual or cap-flux endpoint is claimed under the measurements-only contract; numeric boundary targets and validated cap identities are unavailable.",
+    "execution_contract": {
+      "steps": 20000,
+      "support_radii": [
+        0.015,
+        0.02
+      ],
+      "ridges": [
+        1e-07,
+        1e-08,
+        1e-09
+      ],
+      "rbf_iterations": 20000,
+      "rbf_max_nnz": 1200000000,
+      "centre_separation": 0.0008,
+      "solver_device": "cuda:0",
+      "solver_method": "direct",
+      "direct_factor_device": "cpu",
+      "direct_cpu_factor_backend": "torch",
+      "direct_block_columns": 512,
+      "direct_max_gpu_gib": 42.0,
+      "direct_max_host_gib": 160.0,
+      "device": "cuda:0",
+      "max_score_nodes": 0,
+      "methods": [
+        "data",
+        "cont",
+        "scalar_rbf",
+        "df_rbf"
+      ],
+      "conditions": [
+        "point_all_sigma0",
+        "point_all_sigma0.02",
+        "point_core_sigma0",
+        "point_core_sigma0.02",
+        "volume_core_sigma0",
+        "volume_core_sigma0.02"
+      ],
+      "draws": [
+        0,
+        1,
+        2
+      ],
+      "measurements_only": true,
+      "no_all_observation_refit": true
+    },
+    "execution_contract_status": "specified before evaluation-target access; not a claim that development gates passed or evaluation ran; any change requires a fresh version and source/settings seal"
+  },
+  "track_B_new_native_CFD": {
+    "status": "provider and untouched geometries not yet available",
+    "purpose": "independent pressure and WSS evaluation of the complete frozen pipeline",
+    "minimum_planned_geometries": 3,
+    "selection_rule": "specify geometry, loading and export recipe without examining reconstruction outcomes; retain every eligible attempted case",
+    "required_inputs": [
+      "native wall and cap geometry/connectivity",
+      "velocity at two verified times per phase",
+      "pressure variable definition and reference",
+      "wall traction/WSS vectors and named surface selection",
+      "eddy viscosity if the oracle arm is retained",
+      "units, node ordering, solver and export metadata"
+    ],
+    "boundary_contract": "same prescribed inlet velocities, no-slip wall geometry and outlet gauge information for every method",
+    "primary_pressure": "unsteady momentum integration with CFD eddy viscosity, explicitly labelled oracle closure",
+    "secondary_pressure": [
+      "unsteady molecular-viscosity form",
+      "steady oracle form",
+      "steady molecular form"
+    ],
+    "geometry_invariant_gauge": "zero mean on the declared outlet-adjacent integration patch, identified by cap geometry/node IDs rather than the historical x > 0.130 m threshold",
+    "postprocessing": {
+      "rho_kg_m3": 1050.0,
+      "mu_Pa_s": 0.0035,
+      "gradient_neighbours": 40,
+      "pressure_wall_exclusion_m": 0.001,
+      "primary_WSS_offset_m": 0.00025
+    },
+    "metrics": [
+      "pressure relative L2 and RMSE Pa after common gauge",
+      "pressure drop error Pa",
+      "WSS magnitude/vector relative L2 and RMSE Pa",
+      "WSS upper-tail recovery",
+      "velocity and acceleration error",
+      "continuous/discrete divergence",
+      "runtime and memory"
+    ],
+    "regions": "freeze geometry-defined sac/body/neck and pressure regions before hidden targets are accessed",
+    "weighting": "node-weighted primary metrics for continuity with the original study; area/volume-weighted sensitivities if original weights are available",
+    "analysis_unit": "geometry; retain phase and draw dependence and report every adverse case"
+  },
+  "shared_method_contract": {
+    "methods": [
+      "data-only neural field",
+      "continuity neural field",
+      "operator-aware scalar RBF",
+      "global divergence-free vector RBF"
+    ],
+    "boundary_information": "all available native wall nodes for the supplied CFD family, plus prescribed inlet data; apply an identical available-information contract to every method. Subsampling native wall constraints is a labelled sensitivity, not the primary comparison.",
+    "holdout": "exactly 10 percent of the base observation locations, shared at both times and across methods; carry that split through location subsets; match both fitting and validation counts for removal controls",
+    "final_fit_policy": "retain that hold-out for every method; no method receives an all-observation refit",
+    "hyperparameter_selection": "observed velocity hold-out only; never hidden velocity, pressure, WSS, flux truth or test-case outcomes",
+    "neural_final_step_budget": 20000,
+    "neural_checkpoint": "fixed terminal step; exploratory shorter feasibility fits cannot be presented as final rankings",
+    "RBF_capacity": "Current direct solver and compact_capacity.py must be verified on Brosnan. For each native Case 1/9 and phase, both scalar/DF families under noisy point/volume operators require two increasing basis sizes passing numerical and known wall/inlet gates; both validation error and paired holdout predictions must change by <=2%. Verify saved model/prediction hashes and freeze common selected basis/settings before final scored runs. A single boundary pass cannot seal capacity.",
+    "RBF_selection": "same predeclared support/ridge grid and known-boundary admissibility rule for scalar and solenoidal methods; select admissible converged fits by the shared observation hold-out, retaining all failures",
+    "failure_rule": "report nonconvergence, nonfinite predictions, unsupported geometry and resource failures as outcomes; no silent case/method deletion",
+    "clean_truth": "read-only arrays kept separate from observations; hash equality checked after every fit",
+    "removal_control": "remove all locations within 1.25 mm; compare with random removal matched exactly in BOTH training and validation strata; retain the original scoring set",
+    "scope": "synthetic kinematic robustness and reconstruction; no clinical validation or rupture prediction",
+    "numerical_solver_gate": "record pressure integration stop codes, tolerance, iteration count and residual; absent or unresolved convergence cannot pass the final numerical audit",
+    "boundary_gate": "check both known no-slip wall residuals and prescribed inlet residuals; record whether a wall-check pool overlaps fitting nodes; this is numerical BC verification, not independent biomedical validation",
+    "external_fit_implementation": "Explicit measurements_only mode for all four fitting arms. Reject any simultaneous supplied boundary targets. Preserve the shared observation hold-out and operator-aware loss; external boundary residual/cap-flux endpoints are unavailable under this contract.",
+    "direct_solver_contract": "Column-blocked float64 sparse Gram avoids full dense A. Explicit memory limits and CPU/CUDA factor device are recorded. Accept only original sparse-objective stationarity within the declared tolerance; factorization success alone is insufficient. Preserve failures; no dense disk spill to the NAS. Solver implementation and resource settings are part of the source/execution seal."
+  },
+  "release_receipt": [
+    "source/configuration hashes",
+    "raw or processed input hashes and provenance",
+    "observation and split hashes",
+    "all seeds",
+    "geometry and quadrature checks",
+    "software/hardware",
+    "oracle labels",
+    "attempt and failure ledger",
+    "pre-seal access declaration"
+  ]
+}

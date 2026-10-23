@@ -1,0 +1,65 @@
+Verdict.
+- Manuscript edits: accurate. Every number and claim I could trace checks out. But this version shouldn't go to Abaid as it stands. Many edits aren't marked red, one goes against something he explicitly asked, and a few sentences read like an outside reviewer wrote them.
+- Experiment: correctly wired, with no bug that invalidates it. But after about a day and 22 code versions it has produced no scientific results, and as designed it can't answer the question the paper needs answered.
+- Repository: nothing is committed, and Codex is still running.
+Codex completed everything you asked for on the manuscript (Abaid's four points, Figures 4, 5 and 11, the Saitta reading and referee-style review, the questions to Abaid and his answers). The experiment goal is still in progress.
+I rebuilt Abaid's exact 22 Oct Overleaf text from Codex's temp files; its hash matches Codex's own deletion log. Codex changed 134 lines across 36 places.
+Checked and correct
+- Abaid's numbers: the Table 13 values in the new text match tables/reconstruction_summary.tex, and "33% lower" is right.
+- Brosnan check: Codex's re-aggregation of 84 Brosnan records reproduces the continuity and data-only medians. The one new number, data-only 0.068 with acceleration omitted, comes from those records but appears in no table, so readers can't check it.
+- Figure 13 maximum: I recomputed it from the raw exports: 153.79 kPa in the displayed region (Case 9) and 275.55 kPa over the whole wall (Case 12). Both match Codex.
+- Methods claims: "reference audit on Cases 1–9" matches the saved config, and the new hold-out disclosure matches interpolation.py.
+- Corrections that are genuinely right:
+  - TAWSS segment medians actually rise with inlet diameter; only the 95th percentile falls.
+  - The old sign test treated dependent draws as independent.
+  - Node weighting isn't neutral across geometries, because near-wall mesh refinement differs between them.
+- Abaid's answers: his 22 Oct replies are transcribed faithfully.
+- References: the two Codex added are real, with correct metadata, and its descriptions of Saitta, Ferdian and Zhu match the papers. The review document's details also check out.
+- Build: 54 pages with no warnings, and report/main.pdf is a build of the current source.
+To fix before Abaid sees it
+1. More than a dozen substantive edits aren't red. They include four abstract sentences, the conclusion, the new mechanism and Saitta paragraphs, the sign-test, near-wall and tuned-RBF text, and the Figure 4 caption. Two caption edits sit in separate files, tables/reference_floor.tex and tables/robustness.tex, which must be uploaded to Overleaf with main.tex. Abaid only asked for CFD edits in red, but he called the paper final, so he should see everything. I built a change-marked PDF for this (below).
+2. It overrides Abaid. He wrote "My preference is not to raise it in the manuscript" about the missing solid-mesh convergence study. Codex added that sentence twice (Methods and Limitations), and its review document argues against him. That decision is for you and Abaid.
+3. Reviewer voice inside the paper. Sentences like "not specified in the retained records", "were not available for review" and "have not been independently verified" read as if an outsider audited the authors. Get the facts from Abaid, or phrase these as ordinary limitations.
+4. \texttt{Trmavg} is in the Methods. This is probably ANSYS CFD-Post's Trnavg (transient average) suffix, which would make the D1–D8 plane values time averages rather than instantaneous ones. Ask Abaid for the averaging window, and drop the export name.
+5. "A material difference" overstates the 33% gap. The paper itself says the diastolic error varies between draws by up to 0.085, which is larger than the 0.031 gap.
+6. Unrequested softening of headline claims. For example, the abstract now says WSS accuracy "was sensitive to the near-wall observations". Some of these changes are honest corrections; others just weaken the message. That's your call.
+7. An inconsistency is left behind. Introduction line 454 still lists Saitta among methods "penalizing violations of the governing equations", which contradicts the Discussion Codex rewrote.
+8. Not Codex's doing, but found:
+   - hager2002diameters in tsb.bib has wrong authors: Crossref lists Bernhardt and Galanski, not "Bauer" and "Stern".
+   - "Spanning the reported range" overstates what Hager reports.
+   - Lu's abstract gives no taper ratio, so the "linear taper ratio of 0.8" citation needs checking.
+Status. There are no results yet. On Brosnan, the comparator capacity sweep is on unit 1 of 4. Behind it, 128 feasibility records and 384 pilot records are queued, with up to 36 hours of waiting and up to 48 hours per stage, so expect days.
+Code. An independent review found nothing that invalidates the comparison, and I re-checked its key points:
+- Every method gets the same fitting rows and boundary data.
+- Noise is paired between point and volume conditions, and the removal arms are count-matched.
+- Scoring targets are fixed and hash-checked.
+- The divergence-free kernel checks out.
+All 66 tests pass on this machine (the README says 58 of 66). The weaknesses are in the gates:
+- Capacity checks are too narrow. They cover only the noisy (σ = 0.02) conditions on one draw. They never cover the noise-free conditions, which include the whole near-wall versus random-removal control.
+- The convergence threshold is too loose to certify the 2% gates. It is latent, because the queued pilot uses the direct solver.
+- The boundary gate is weak. It is the RBFs' own selection criterion, so they can't fail it. It also averages over all wall nodes, so it misses slip in the aneurysm zone where WSS is scored.
+Design.
+- The paper's comparator is missing. The pilot omits the paper's prespecified RBF, the space-time RBF and a naive "voxel average treated as a point value" baseline. So it can't show whether the paper's ranking survives noise and averaging.
+- The pressure outcome is partly built in. The new RBFs fit each snapshot separately. Under independent noise, their two-snapshot acceleration is structurally worse than the space-time neural field's.
+- Tuning stops at the edge of the grid. Both RBFs picked the largest radius (20 mm) and smallest ridge (1e-9) tried, and the queued pilot reuses that grid.
+- Partial-volume averaging at the wall is never modelled. Volume averaging uses only boxes entirely inside the lumen (Case 1: 3,037 of 5,970 locations), yet near-wall voxels matter most for WSS.
+- Cost. Most of the 22 versions went into making one new comparator converge. The live job uses about 54 GB of RAM on shared Brosnan, and at 12:05 Codex started benchmarks to run it on more threads.
+- Disclosure gap. The prior-access declaration says "no velocity values" were inspected in the external evaluation data. In fact Codex read the velocity maxima of aorta03_HR.h5, which is the same anatomy as one evaluation file. The impact is minor, but it should be disclosed.
+- Codex is still running. It is in a goal loop with no token budget, checking Brosnan every couple of minutes. This audit is a snapshot as of about 12:06.
+- Nothing is committed. doc/ (the whole manuscript) and experiments/ are untracked, because commit d3c96a1 removed the manuscript from git. report/, which holds all the experiment evidence, is git-ignored.
+- The pre-edit Overleaf copy is only in %TEMP%. Codex said it saved it under report/, but it didn't.
+- README: "manuscript tables are not altered" is wrong (two captions changed), as is "58 of 66 tests".
+1. Pause Codex's goal loop. The Brosnan jobs run on their own, so decide separately whether to let them continue.
+2. Commit doc/ and experiments/, and keep Abaid's Overleaf version. I can do this on a branch.
+3. Send Abaid the change-marked PDF, and settle the mesh-convergence sentence, Trmavg and the Hager entry with him.
+4. Before the 384-record run:
+   - add the prespecified and space-time RBFs and a naive voxel baseline;
+   - widen the radius/ridge grid;
+   - capacity-check the noise-free conditions.
+5. Correct the prior-access declaration.
+I made no changes to the repository. These files are in this session's scratchpad, so I can copy them into report/ if you want to keep them:
+- Change-marked PDF of every Codex edit against Abaid's version: C:\Users\OLARIN~1\AppData\Local\Temp\claude\c--Users-olarinoyem-Desktop-sms-IdealAorta-PINN\f6f03213-66ca-4404-a49e-2a628dbff850\scratchpad\latexdiff\codex_changes_vs_abaid.pdf
+- Abaid's rebuilt 22 Oct Overleaf source: C:\Users\OLARIN~1\AppData\Local\Temp\claude\c--Users-olarinoyem-Desktop-sms-IdealAorta-PINN\f6f03213-66ca-4404-a49e-2a628dbff850\scratchpad\ms\B0_overleaf.tex
+I can also turn this audit into a shareable page if you want to pass it on.
+
+  
