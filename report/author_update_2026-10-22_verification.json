@@ -1,0 +1,49 @@
+{
+  "verified_utc": "2026-10-22T19:40:29.269038+00:00",
+  "basis": "Abaid author messages supplied by user, 22 October 2026 14:28 and 15:17",
+  "source": "doc/IdealAorta_EACFM/main.tex",
+  "source_sha256": "52d034c951de61df8524688bdf2f07a13ecd62d373c36700f6fb1b081b5fdb46",
+  "main_pages": 54,
+  "review_pages": 7,
+  "latexmk_exit_codes": [
+    0,
+    0
+  ],
+  "unresolved_references": false,
+  "overfull_boxes": false,
+  "main_pages_rendered_and_visually_inspected": [
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    18,
+    26,
+    29,
+    45
+  ],
+  "review_pages_rendered_and_visually_inspected": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "figure_11": "reduced width retained; text follows on page 26",
+  "CFD_changes": "red via cfdrevision macro",
+  "independent_solver_project_verification": false,
+  "outputs": [
+    {
+      "path": "report\\main.pdf",
+      "sha256": "6e21278b9d00bd3d2ca574cc32eacea93fe25dc8962bdc364edaebf5dae0a796"
+    },
+    {
+      "path": "report\\review_2026-10-22.pdf",
+      "sha256": "6c67e090b895c8a9796813fce1cc6ee643c38f408ff367eab2ebd840e4768be4"
+    }
+  ],
+  "remaining_evidence": "doc/author_clarifications_2026-10-22.json"
+}
