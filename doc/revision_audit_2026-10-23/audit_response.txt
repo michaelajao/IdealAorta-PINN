@@ -1,3 +1,15 @@
+Cleanup follow-up, 23 October 2026
+The historical response below records the earlier checkpoint. The accepted
+review text and red revision marks now live in the active
+doc/IdealAorta_EACFM/main.tex and its two table captions. The standalone
+comparison source, duplicate PDFs and one-off scripts have been removed from
+the active tree after verified copying to report/cleanup_history_2026-10-23/.
+They also remain recoverable from Git commit 8b61fe6. The original Overleaf
+source and compact audit receipts remain here. The renamed preservation
+manifest_at_pause.json describes that historical checkpoint, not the cleaned
+directory. Scientific wording and unresolved author decisions were not changed
+by the cleanup. See doc/OVERLEAF_UPLOAD.txt for the current upload instructions.
+
 Response to the supplied audit, 23 October 2026
 
 Execution decision

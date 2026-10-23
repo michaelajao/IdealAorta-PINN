@@ -1,3 +1,6 @@
 # Preserve exact evidence bytes and tested scientific source hashes on Windows.
 doc/revision_audit_2026-10-23/** -text
+doc/IdealAorta_EACFM/main.tex -text
+doc/IdealAorta_EACFM/tables/reference_floor.tex -text
+doc/IdealAorta_EACFM/tables/robustness.tex -text
 experiments/measurement_realism_2026_10_22/*.py -text

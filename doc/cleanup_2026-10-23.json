@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-23",
+  "cleanup_scope": "active manuscript, duplicate audit deliverables, bytecode and temporary builds; scientific fitting/scoring code retained unchanged",
+  "superseded_files": [
+    {
+      "name": "build_red_review.py",
+      "sha256": "194700A467B3A1969F5B17C3CDC78470F1D3033BD4F2E7C92811E90D731A2E68",
+      "bytes": 2840
+    },
+    {
+      "name": "codex_changes_vs_abaid.pdf",
+      "sha256": "1E8BAF6DB23332971F651430C4CDE4EB9F4131115BC644924919929F5807A658",
+      "bytes": 7737380
+    },
+    {
+      "name": "codex_changes_vs_abaid.tex",
+      "sha256": "978E987C37838C7EB969501D4DECE5F6D09068934BD0A77472D8E465B1EB2441",
+      "bytes": 202033
+    },
+    {
+      "name": "main_before_audit.tex",
+      "sha256": "52D034C951DE61DF8524688BDF2F07A13ECD62D373C36700F6FB1B081B5FDB46",
+      "bytes": 161535
+    },
+    {
+      "name": "main_red_review.pdf",
+      "sha256": "B00F1721779C3953547246AA2DD93298B1B0168BCDE2D39100BFF5BD8CAF97A5",
+      "bytes": 7648450
+    },
+    {
+      "name": "main_red_review.tex",
+      "sha256": "2555039531F9BDA8CAB254FAAD01A9F84D2DE8191EFD83505D5D0D2F600933C8",
+      "bytes": 204007
+    },
+    {
+      "name": "reconcile_checkpoint.py",
+      "sha256": "77596659E585B94B5C20F6A843446C213DCE8E51CB26575EA318BD998176D389",
+      "bytes": 5849
+    }
+  ],
+  "history_commit": "8b61fe6",
+  "local_verified_archive": "report/cleanup_history_2026-10-23/",
+  "active_source": "doc/IdealAorta_EACFM/main.tex",
+  "revision_style": "plain red revision macros, without the diff engine or deleted wording",
+  "source_body_matches_pre_cleanup_after_markup_and_spacing_normalization": true,
+  "scientific_python_files_unchanged_from_brosnan_66_test_receipt": 38,
+  "standalone_overleaf_files": 36,
+  "standalone_build_pages": 54,
+  "latex_warnings": 0,
+  "visual_checks": [
+    "abstract red/black only",
+    "Figure 11 reduced with body text below"
+  ],
+  "package": "report/overleaf_review.zip",
+  "pdf": "report/main.pdf",
+  "active_source_sha256": "e50c1929fb263b4eddc17d52b3d80c758a5f0c759f6a5b3d21001e0ef3953702",
+  "package_sha256": "c1e2bfd9f8a35ecd811db56dfec554e1f6763073629e0efc0a7049181aaec595",
+  "pdf_sha256": "8cf838b5d9ed275643311a9cb5c1a45906654f00bf49c6ca6f13a55801648f3e",
+  "experiment_goal": "paused; no new scientific fit or evaluation launched",
+  "author_decisions": "doc/revision_audit_2026-10-23/audit_response.txt"
+}
