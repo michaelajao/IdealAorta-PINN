@@ -4,13 +4,15 @@ Execution decision
 The experiment goal is paused at the user's request. The waiting v22
 eight-thread launch controller was stopped at 11:39:47 UTC before any stage
 started. Its terminal receipt remains in Git history. The existing v21 capacity
-sweep continues unchanged; it cannot launch the full pilot. No further fits,
+sweep was left unchanged at the pause checkpoint; it cannot launch the full
+pilot. No further fits,
 benchmarks, or independent evaluation are authorized by this checkpoint.
 The paused scientific goal remains incomplete.
 
-Verified current status
-The current 128-record feasibility and 384-record final development stages
-have zero records. There are earlier smoke, adapter and partial development
+Status verified at the 23 October audit checkpoint
+At that checkpoint, the 128-record feasibility and 384-record final development
+stages had zero records. This is a dated observation, not a live process report.
+There are earlier smoke, adapter and partial development
 fits; those do not establish the requested accuracy comparison. All 66 tests
 passed on Brosnan with zero skips. The isolated local environment passed 58
 and skipped eight dependency-backed checks; that distinction was accurate and
@@ -29,36 +31,40 @@ The active manuscript is doc/IdealAorta_EACFM/main.tex, with revisions in red
 and deleted wording removed. Both changed table captions are marked red.
 Figure artwork retains its scientific colours. Earlier comparisons and receipts
 remain in Git history; duplicate copies and cleanup helpers were deleted.
-The existing README contains the Overleaf upload instructions.
+The README now documents installation, inputs and software use without paper
+upload instructions or a code-layout inventory. The existing source package and
+compiled review remain in report/. No new delivery files were created.
 
-Pending author decisions before sharing a final manuscript
-1. The missing solid-mesh convergence study is factual, but Abaid explicitly
-   preferred omitting it. Do not silently resolve that disagreement. Agree
-   one concise limitation with both authors and avoid repeating it in Methods
-   and Discussion. Never imply structural convergence was established.
-2. Replace audit-style phrases with normal author descriptions of what was
-   done and which sensitivities were not tested. Do not invent missing settings.
-3. Ask Abaid whether the export suffix was Trmavg or Trnavg, and obtain the
-   actual time/phase or averaging window for D1-D8. Transient averaging remains
-   a hypothesis; do not relabel these values as instantaneous or time-averaged
-   without confirmation. The export suffix itself need not appear in the paper.
-4. Replace 'a material difference' with a numerical description: the data-only
-   median is 0.031 lower (about 33%), with draw variability reported separately.
-   This is not evidence of a statistically reliable superiority.
-5. Distinguish PINNs with PDE penalties from data/boundary neural fields in the
-   Introduction, consistent with the Saitta discussion. Preserve the actual
-   comparison's limitations and let the authors decide headline wording.
-6. Hager's authors were verified against PubMed PMID 12063451. Several names
-   in the supplied bibliography are wrong, not just Bauer and Stern. The
-   corrected entry is listed in the checkpoint changes. Hager does not establish
-   that 2.0-2.6 cm spans the whole descending-aortic population range.
-7. Lu PMID 30769067 supports descending-aortic tapering generally. Its abstract
-   describes segment-specific taper, not a universal linear ratio of 0.8.
-   Unless the full text supports that exact ratio for the modeled segment,
-   describe 0.8 as this study's fixed modeling choice.
-8. The acceleration-omitted data-only error of 0.068 needs a traceable table or
-   supplement if retained as a result. Do not treat an unreported median as a
-   demonstrated causal mechanism for the continuity/data-only difference.
+Editorial corrections completed in the active source
+The Introduction now distinguishes Saitta's data/boundary neural representation
+from PINNs with PDE penalties. The selected inlet diameters are no longer said
+to span the population range, and the taper ratio is described as a modeling
+choice rather than a measured universal anatomical ratio. The data-only pressure
+gap is given as 0.031, about 33%, without implying statistical superiority.
+The unreported acceleration-omitted median of 0.068 has been removed. Acceleration
+sensitivity remains a qualified explanation supported by the reported comparisons.
+Audit-style author wording and the undocumented export suffix have been removed.
+Inactive superseded prose and the duplicate hidden literature table were deleted.
+
+Remaining author information and agreement
+1. A dedicated solid-mesh convergence study was not performed. The active text
+   retains this fact once in Limitations and describes the supplied structural
+   mesh in Methods. Abaid preferred omission, so the final wording still needs
+   coauthor agreement. Structural convergence must not be implied.
+2. The physical time or temporal averaging interval for the D1-D8 area averages
+   remains unknown. Confirm this with Abaid before assigning a flow phase to the
+   profiles. The limitation is explicit without guessing from an export suffix.
+3. Pressure-transfer verification, external-pressure convention and stress
+   averaging/extrapolation details remain unresolved. These would be needed for
+   stronger structural verification. No missing solver settings were invented.
+
+Cleanup
+Forty-six inspected one-off helpers, superseded restart/status records, a
+comparison screenshot and the stale author-update PDF receipt were removed from
+report/. Exact copies are recoverable from Git commit 7114154. Scientific result
+receipts, failed capacity checks, immutable source snapshots and the original
+research archive remain. The core reconstruction and experimental Python sources
+were not changed.
 
 Experiment revision required before restart (not implemented or sealed)
 The primary question is whether the manuscript's neural-versus-RBF ranking
@@ -110,8 +116,8 @@ The original declaration remains in Git history, and controller inputs remain
 in the experiment evidence;
 future protocols must use the corrected declaration and a fresh design seal.
 
-Nothing has been sent to Abaid or published. The author questions above are
-drafts for Michael to discuss with Abaid.
+Nothing has been sent to Abaid. The remaining questions are for Michael to
+discuss with him, and the scientific experiment goal remains paused.
 
 Primary reference checks
 https://pubmed.ncbi.nlm.nih.gov/12063451/
