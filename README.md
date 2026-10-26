@@ -1,10 +1,7 @@
 # IdealAorta-PINN
 
-Code for the sparse-velocity reconstruction study in
-
-> *Effects of Inlet Diameter and Sac Asymmetry on Transitional Flow in Idealized Descending
-> Thoracic Aortic Aneurysms, with Neural-Field Recovery of Pressure and Wall Shear Stress from
-> Sparse Velocity* (manuscript under review).
+Code for a sparse-velocity reconstruction study on idealized descending thoracic aortic
+aneurysms.
 
 Velocity is observed at about 1.3% of the interior nodes of a transient CFD solution at two
 instants 5–10 ms apart. From these observations each method recovers the velocity at the other
@@ -18,7 +15,6 @@ estimate, so the comparison isolates the reconstruction itself.
 
 - [Data](#data)
 - [Setup](#setup)
-- [Manuscript and Overleaf](#manuscript-and-overleaf)
 - [Reproducing the results](#reproducing-the-results)
 - [Outputs](#outputs)
 - [Code layout](#code-layout)
@@ -65,50 +61,12 @@ pip install -r requirements.txt
 All commands are run from the repository root as `python main.py <command>`;
 `python main.py -h` lists them and `python main.py <command> -h` gives their options.
 
-## Manuscript and Overleaf
-
-The current manuscript is `doc/IdealAorta_EACFM/main.tex`, based on Abaid's latest
-Overleaf text with the verified Case 8 stress correction. Its supporting files are
-`bib/`, `tables/` and `figures/` in the same directory. The broader editorial review
-has not been merged into this version.
-
-`figures/generated/confirm_p_sys.dat` and `confirm_p_dia.dat` contain the pressure
-scatter-plot coordinates read directly by PGFPlots during compilation. They are
-required figure inputs; keep them alongside the PDF and PNG figures.
-
-For the existing Overleaf project, extract the single current upload package
-`report/overleaf_update.zip` and replace its five files at their matching paths:
-
-```text
-main.tex
-tables/mps_summary.tex
-figures/generated/mps_montage.pdf
-figures/generated/confirm_p_sys.dat
-figures/generated/confirm_p_dia.dat
-```
-
-Keep `main.tex` as the main document and use pdfLaTeX. The checked preview is
-`report/main.pdf`. Compare any subsequent coauthor changes before replacing the
-live Overleaf root file.
-
-Previous drafts, audit evidence and the complete pre-cleanup snapshot are retained
-in `report/research_archive.zip`; `cleanup_manifest.json` inside it records paths
-and SHA-256 hashes. Raw data remain under `data/`; the active replacement Case 8
-export is `data/raw/MPS/Case 8.xls`. Keep temporary builds and verification renders
-outside the manuscript source directory and remove them after checking.
-
-To compile locally from the repository root:
-
-```bash
-latexmk -cd -pdf -outdir=../../report/latex-build doc/IdealAorta_EACFM/main.tex
-```
-
 ## Reproducing the results
 
 Each study is a YAML file in `configs/reconstruction/`. `main.py jobs <study> --kind <kind>`
 writes one command line per run, and `main.py run-jobs <file>` runs such a file with bounded
 concurrency (GPU jobs are spread round-robin over `--gpus`; pass `--gpus` with no value for
-CPU-only work). The steps below follow the sections of the paper.
+CPU-only work).
 
 **1. Prepare the data (once).** Splits the CSV exports into per-block parquet files
 under `data/processed/full/`.
@@ -117,7 +75,7 @@ under `data/processed/full/`.
 python main.py prepare
 ```
 
-**2. Checks of the complete CFD fields (Section 5.1, Table 10).** Momentum-budget and pressure
+**2. Checks of the complete CFD fields.** Momentum-budget and pressure
 checks of each case and phase, and the WSS estimators applied to the complete CFD velocity.
 
 ```bash
@@ -125,7 +83,7 @@ python main.py jobs reference --kind reference > jobs_reference.txt
 python main.py run-jobs jobs_reference.txt --parallel 4 --gpus
 ```
 
-**3. Development test on Cases 1 and 9 (Section 5.2).** First the physics weight of each
+**3. Development test on Cases 1 and 9.** First the physics weight of each
 neural arm (10 000 steps, Case 1 at systole), then the prespecified comparison of the four
 neural arms with linear and RBF interpolation.
 
@@ -142,7 +100,7 @@ python main.py summarize dev_main
 python main.py diagnose <run name> [<run name> ...]     # momentum PINNs through the shared post-processing
 ```
 
-**4. Confirmation on Cases 2–8 (Sections 5.3–5.5).** The continuity field and the data-only
+**4. Confirmation on Cases 2–8.** The continuity field and the data-only
 field, linear and RBF interpolation and the post-processing floor, at three draws of the
 2.5 mm grid and one draw each of the 1.5 and 4.0 mm grids.
 
@@ -155,7 +113,7 @@ python main.py confirm confirm          # prespecified hypothesis tests (expect 
 python main.py report confirm           # CSV tables and the result figures
 ```
 
-**5. Robustness to the interpolation comparator (Section 5.6).** Tuned and space-time RBF,
+**5. Robustness to the interpolation comparator.** Tuned and space-time RBF,
 draw 0 of the 2.5 mm grid; `confirm` then includes them in its per-unit table.
 
 ```bash
@@ -163,7 +121,7 @@ python main.py jobs confirm --kind robustness > jobs_robustness.txt
 python main.py run-jobs jobs_robustness.txt --parallel 4 --gpus
 ```
 
-**6. Sensitivity to near-wall observations (Section 5.7).** The continuity field and RBF,
+**6. Sensitivity to near-wall observations.** The continuity field and RBF,
 draw 0 of the 2.5 mm grid, without observations within 1.25 mm of the wall. These runs carry
 the suffix `_mw1.25` and are kept out of the confirmatory analysis.
 
